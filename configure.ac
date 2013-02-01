@@ -24,9 +24,12 @@ AC_SUBST(SQLITE_CFLAGS)
 AC_SUBST(SQLITE_LIBS)
 
 ### check for icu
-PKG_CHECK_MODULES(ICU_I18N, [icu-i18n],[],[echo "libicu I18N package required but not found"; exit 1])
-AC_SUBST(ICU_I18N_CFLAGS)
-AC_SUBST(ICU_I18N_LIBS)
+PKG_CHECK_MODULES(ICU, [icu-i18n],[],[
+	AX_CHECK_ICU([4.4.2],[], [echo "libicu package required but not found"; exit 1])
+	])
+AC_SUBST(ICU_CFLAGS)
+AC_SUBST(ICU_LIBS)
+
 
 AC_ARG_ENABLE([debug],
               AC_HELP_STRING([--enable-debug], [this option enable debug compile option]),
