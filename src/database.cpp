@@ -118,6 +118,7 @@ void  Database::checkAndCreateTables() throw( Database::Error )
 		checkAndcreateAlbumsTable();
 		checkAndcreateComposersTable();
 		checkAndcreateGernesTable();
+		executeInsertOrUpdate("PRAGMA synchronous = 0;");
 		writeUnlock();
 	}
 	catch( Database::Error & error )

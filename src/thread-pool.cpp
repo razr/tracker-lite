@@ -124,7 +124,7 @@ void ThreadPool::pushFile( const std::string& file )
 
 void ThreadPool::processFile( const std::string& filePath, int threadId )
 {
-	std::cout << "thread #" << threadId << ": processFile " << filePath;
+	std::cout << "thread #" << threadId << ": processFile " << filePath << std::endl;
 	std::string extension;
 	size_t last_dot_pos = filePath.find_last_of(".");
 	if (last_dot_pos != std::string::npos)
