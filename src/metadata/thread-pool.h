@@ -13,7 +13,7 @@
 #include <queue>
 #include <boost/function.hpp>
 
-#define THREAD_POOL_SIZE 5
+#define THREAD_POOL_SIZE 1
 
 class File;
 

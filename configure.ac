@@ -23,6 +23,11 @@ PKG_CHECK_MODULES([SQLITE], [sqlite3],[],[echo "sqlite package required but not 
 AC_SUBST(SQLITE_CFLAGS)
 AC_SUBST(SQLITE_LIBS)
 
+### check for glib
+PKG_CHECK_MODULES([GLIB], [glib-2.0],[],[echo "glib package required but not found"; exit 1])
+AC_SUBST(GLIB_CFLAGS)
+AC_SUBST(GLIB_LIBS)
+
 ### check for icu
 PKG_CHECK_MODULES(ICU, [icu-i18n],[],[
 	AX_CHECK_ICU([4.4.2],[], [echo "libicu package required but not found"; exit 1])
@@ -36,10 +41,8 @@ AC_ARG_ENABLE([debug],
               [], [CFLAGS="-g -O0";CXXFLAGS="-g -O0"])
 
 AC_CONFIG_FILES([
-                Makefile
-                src/Makefile
+                Makefile                
         ])
-
 AC_OUTPUT
 
 

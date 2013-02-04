@@ -1,12 +1,9 @@
+#include <glib.h>
 #include <iostream>
 #include <boost/bind.hpp>
 #include "file-metadata-extractor.h"
 #include "taglib-metadata-extractor.h"
-#include "filesystem-scanner.h"
-#include "database.h"
-#include "thread-pool.h"
-#include "file-database-persistor.h"
-
+#include "device-manager.h"
 
 #define MAX_FILES_IN_TRANSACTION 360
 #define MAX_ATTRIBUTES 12
@@ -15,10 +12,6 @@
 
 
 
-#ifdef WITH_STATISTICS
-static int foundFiles = 0;
-static int processedFiles = 0;
-#endif
 
 
 #ifdef WITH_MD5_IDS
@@ -88,6 +81,12 @@ void cleanDataBase()
 using namespace std;
 
 
+// emulate new device
+gboolean newDeviceAdded( gpointer ptr)
+{
+	DeviceManager::getInstance().handleDeviceInserted("BDB4-A56F_2", "/media/BDB4-A56F");
+	return FALSE;
+}
 
 int main()
 {
@@ -97,6 +96,8 @@ int main()
 #else
 	std::string dbFile = "trackertest";
 #endif
+
+	GMainLoop *loop = g_main_loop_new ( NULL , FALSE );
 
 
 	cout << "MAX_FILES_IN_TRANSACTION = " << MAX_FILES_IN_TRANSACTION << endl;
@@ -119,58 +120,18 @@ int main()
 	MetadataExtractManager::getInstance().registerExtractor( "MP2",  &taglibExtractor);
 	MetadataExtractManager::getInstance().registerExtractor( "M4B",  &taglibExtractor);
 
-	Database database( dbFile );
 
-	try
-	{
-		database.checkAndCreateTables();
-	}
-	catch( const Database::Error & error )
-	{
-		cerr << "Fatal Error : " << error.getMessage() << endl;
-		return -1;
-	}
+	DeviceManager::getInstance().handleDeviceInserted("BDB4-A56F", "/media/BDB4-A56F");
+	g_timeout_add_seconds( 10, newDeviceAdded, loop );
+	g_main_loop_run (loop);
+	g_main_loop_unref (loop);
 
-#ifdef WITH_STATISTICS
-	time_t start_time, curr_time;
-	time( &start_time );
-#endif
-
-	ThreadPool threadPool;
-	FileDatabasePersistor  persistor( database );
-	FileSystemScanner      fsScanner( boost::bind(&ThreadPool::pushFile, &threadPool, _1) );
-
-	try
-	{
-		threadPool.start ( boost::bind( &FileDatabasePersistor::saveFile, &persistor, _1));
-	}
-	catch( ThreadPool::Error& error )
-	{
-		cerr << "Fatal Error : " << error.getMessage() << endl;
-		return -2;
-	}
-
-
-
-
-
-	try
-	{
-		fsScanner.startExctractFolderRecursively("/media/BDB4-A56F");
-	}
-	//catch( const FileSystemScanner::Error& error )
-	catch(...)
-	{
-		//cerr << "FatalError : " << error.getMessage() << endl;
-		cerr << "FatalError " << endl;
-		return -3;
-	}
 
 #ifdef WITH_STATISTICS
 	cout << "Finished filesystem scan files in " << ( int ) ( time( &curr_time ) - start_time ) << " s.  found: " << foundFiles << endl;
 #endif
 
-	threadPool.terminate(ThreadPool::WAIT_ALL);
+
 
 #ifdef WITH_STATISTICS
 	cout << "Metatata extracted in " << ( int ) ( time( & curr_time ) - start_time ) << " s. " << endl;

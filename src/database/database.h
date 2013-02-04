@@ -1,4 +1,4 @@
-	/*
+/*
  * database.h
  *
  *  Created on: Jan 30, 2013
@@ -41,12 +41,14 @@ protected:
 	void checkAndcreateAlbumsTable() throw( Error );
 	void checkAndcreateComposersTable() throw( Error );
 	void checkAndcreateGernesTable() throw( Error );
+	void checkAndCreateTables() throw( Error );
 public:
 	void writeLock();
 	void writeUnlock();
-	Database( const std::string& fileName );
-	void    checkAndCreateTables() throw( Error );
+	Database();
+	void open( const std::string& fileName ) throw ( Error );
 	int64_t executeInsertOrUpdate( const std::string& sql ) throw( Error );
+	void close();
 
 };
 

@@ -16,9 +16,8 @@
 #include <iostream>
 #endif
 
-Database::Database( const std::string& fileName )
+Database::Database()
 {
-	m_fileName = fileName;
 	m_dbConn = NULL;
 	pthread_mutex_init(& m_mutextWriteLock, NULL );
 }
@@ -101,13 +100,7 @@ void Database::checkAndcreateGernesTable() throw( Database::Error )
 void  Database::checkAndCreateTables() throw( Database::Error )
 {
 
-	int result = sqlite3_open( m_fileName.c_str(), &m_dbConn);
-	if( result != SQLITE_OK )
-	{
-		std::string errMsg = std::string("can't open database: ") + sqlite3_errmsg(m_dbConn);
-		sqlite3_close(m_dbConn);
-		throw Error( errMsg );
-	}
+
 
 	try
 	{
@@ -138,6 +131,7 @@ int64_t Database::executeInsertOrUpdate( const std::string& sql ) throw( Databas
 	{
 		throw Database::Error("no database connection");
 	}
+
 	int rc = sqlite3_exec(m_dbConn, sql.c_str() , NULL, 0, &errMsg);
 	if( rc != SQLITE_OK )
 	{
@@ -158,6 +152,30 @@ void Database::writeLock()
 void Database::writeUnlock()
 {
 	pthread_mutex_unlock(& m_mutextWriteLock );
+}
+
+void Database::open(const std::string& fileName ) throw (Database::Error)
+{
+		if( m_dbConn )
+			close();
+		m_fileName = fileName;
+		int result = sqlite3_open( m_fileName.c_str(), &m_dbConn);
+		if( result != SQLITE_OK )
+		{
+			std::string errMsg = std::string("can't open database: ") + sqlite3_errmsg(m_dbConn);
+			sqlite3_close(m_dbConn);
+			throw Error( errMsg );
+		}
+		checkAndCreateTables();
+}
+
+void Database::close()
+{
+	if( m_dbConn )
+	{
+		sqlite3_close( m_dbConn );
+		m_dbConn = NULL;
+	}
 }
 
 
