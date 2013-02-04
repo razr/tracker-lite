@@ -22,6 +22,10 @@ DeviceManager DeviceManager::m_instance;
 #ifdef WITH_LOGGING
 #include <iostream>
 #endif
+#define WITH_STATISTICS
+#ifdef WITH_STATISTICS
+#include "statistics.h"
+#endif
 
 
 DeviceManager::DeviceManager()
@@ -29,6 +33,7 @@ DeviceManager::DeviceManager()
 	m_deviceId = "";
 	m_devicePath = "";
 	m_fileSystemScanner.setOnFileFoundHandler(boost::bind(&ThreadPool::pushFile, &m_metadataExtractingPool, _1) );
+	m_fileSystemScanner.setOnFolderScanTerminated( boost::bind(&DeviceManager::fileSystemScanTerminated, this) );
 	m_filePersistor = new FileDatabasePersistor(  m_database );
 }
 
@@ -46,11 +51,11 @@ void DeviceManager::handleDeviceInserted(const std::string& deviceId, const std:
 	try
 	{
 		m_fileSystemScanner.cancelScan();
-		m_metadataExtractingPool.terminate( ThreadPool::FORCE_TERMINATE);
+		m_metadataExtractingPool.terminate( ThreadPool::WAIT_ALL);
 		m_database.close();
 		m_database.open( "tracker_db_" + deviceId);
 		m_metadataExtractingPool.start( boost::bind( &FileDatabasePersistor::saveFile, m_filePersistor, _1) );
-		m_fileSystemScanner.startExctractFolderRecursively( devicePath );
+		m_fileSystemScanner.startScanFolderRecursively( devicePath );
 	}
 	catch( ThreadPool::Error& error )
 	{
@@ -58,3 +63,16 @@ void DeviceManager::handleDeviceInserted(const std::string& deviceId, const std:
 	}
 }
 
+void DeviceManager::fileSystemScanTerminated(void)
+{
+	std::cout << "FS terminated" << std::endl;
+#ifdef WITH_STATISTICS
+	Statistics::getInstance().fsScanFinished();
+#endif
+	m_metadataExtractingPool.terminate( ThreadPool::WAIT_ALL);
+#ifdef WITH_STATISTICS
+	Statistics::getInstance().metadataExtractFinished();
+	Statistics::getInstance().print();
+#endif
+
+}

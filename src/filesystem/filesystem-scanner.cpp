@@ -22,6 +22,11 @@
 #include <iostream>
 #endif
 
+#define WITH_STATISTICS
+#ifdef WITH_STATISTICS
+#include "statistics.h"
+#endif
+
 FileSystemScanner::FileSystemScanner()
 {
 	b_runThread = false;
@@ -32,10 +37,17 @@ void FileSystemScanner::setOnFileFoundHandler(FileFunctionType onFileFound)
 	m_onFileFound = onFileFound;
 }
 
+void FileSystemScanner::setOnFolderScanTerminated( TerminateFunctionType onScanTerminated )
+{
+	m_onScanTerminated = onScanTerminated;
+}
+
 void * FileSystemScanner::scanThread( void* userData )
 {
 	FileSystemScanner* pInstance = static_cast<FileSystemScanner *>( userData );
 	pInstance->scanFolder(pInstance->m_folderToScan);
+	if( ! pInstance->m_onScanTerminated.empty() )
+		pInstance->m_onScanTerminated();
 	return NULL;
 }
 
@@ -75,7 +87,11 @@ void FileSystemScanner::scanFolder( const std::string& folderName )
 			{
 				if( S_ISREG( dir_stat.st_mode) )
 				{
-					m_onFileFound( fileName );
+#ifdef WITH_STATISTICS
+					Statistics::getInstance().newFileScanned();
+#endif
+					if( ! m_onFileFound.empty() )
+						m_onFileFound( fileName );
 				}
 			}
 		}
@@ -83,7 +99,7 @@ void FileSystemScanner::scanFolder( const std::string& folderName )
 
 }
 
-int FileSystemScanner::startExctractFolderRecursively( const std::string& folderName )
+void FileSystemScanner::startScanFolderRecursively( const std::string& folderName )
 {
 		if( b_runThread )
 			cancelScan();

@@ -25,9 +25,11 @@ class DeviceManager
 	FileSystemScanner m_fileSystemScanner;
 	ThreadPool		m_metadataExtractingPool;
 	FileDatabasePersistor  *m_filePersistor;
+	void fileSystemScanTerminated(void);
 public:
 	static DeviceManager& getInstance();
 	void handleDeviceInserted(const std::string& deviceId, const std::string& devicePath);
+	void onDeviceIndexingComplete();
 };
 
 #endif /* DEVICE_MANAGER_H_ */

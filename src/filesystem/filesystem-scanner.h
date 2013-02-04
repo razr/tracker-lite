@@ -14,6 +14,7 @@
 
 
 typedef boost::function<void(const std::string&)> FileFunctionType;
+typedef boost::function<void(void)> TerminateFunctionType;
 
 /**
  * @class FileSystemScanner
@@ -22,6 +23,7 @@ typedef boost::function<void(const std::string&)> FileFunctionType;
 class FileSystemScanner
 {
 	FileFunctionType m_onFileFound;
+	TerminateFunctionType m_onScanTerminated;
 	void scanFolder( const std::string& folderPath);
 	static void *scanThread( void* );
 	bool m_scanRunning;
@@ -31,7 +33,8 @@ class FileSystemScanner
 public:
 	FileSystemScanner();
 	void setOnFileFoundHandler(FileFunctionType onFileFound);
-	int startExctractFolderRecursively( const std::string& folderName );
+	void setOnFolderScanTerminated( TerminateFunctionType onScanTerminated );
+	void  startScanFolderRecursively( const std::string& folderName );
 	void cancelScan();
 };
 

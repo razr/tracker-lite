@@ -19,6 +19,11 @@
 #include <cstring>
 #include <algorithm>
 
+#define WITH_STATISTICS
+#ifdef  WITH_STATISTICS
+#include "statistics.h"
+#endif
+
 #define WITH_LOGGING
 
 #ifdef WITH_LOGGING
@@ -61,7 +66,7 @@ void ThreadPool::runThread( int threadId )
 			std::string fileName =  m_queues[ threadId ].front();
 			m_queues[ threadId ].pop();
 #ifdef WITH_STATISTICS
-			++ popped[threadId];
+			Statistics::getInstance().newFilePopped( threadId );
 #endif
 			pthread_mutex_unlock( & m_queueMutexes[ threadId ]);
 
@@ -69,7 +74,7 @@ void ThreadPool::runThread( int threadId )
 			processFile(fileName, threadId);
 
 #ifdef WITH_STATISTICS
-			processedFiles++;
+			Statistics::getInstance().newFileProcessed();
 #endif
 			sleep(0);
 		}
@@ -83,10 +88,6 @@ void ThreadPool::start(FileMetadataExtractedFunctionType onFileMetadataExtracted
 	{
 		pthread_mutex_init( & m_queueMutexes[i], NULL );
 		b_runThread[i] = true;
-#ifdef WITH_STATISTICS
-		pushed[i] = 0;
-		poped[i] = 0;
-#endif
 		std::pair<ThreadPool*, int> *pair = new std::pair<ThreadPool*, int>(this, i);
 		pthread_create( & m_threads[i], NULL, threadFunction, pair);
 	}
@@ -115,7 +116,7 @@ void ThreadPool::pushFile( const std::string& file )
 	pthread_mutex_lock( & m_queueMutexes[ threadID ]);
 	m_queues[ threadID ].push( file );
 #ifdef WITH_STATISTICS
-	++ pushed[threadID];
+	Statistics::getInstance().newFilePushed(threadID);
 #endif
 	pthread_mutex_unlock( & m_queueMutexes[ threadID ]);
 	threadID = ( threadID + 1 ) % THREAD_POOL_SIZE;
