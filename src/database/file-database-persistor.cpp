@@ -12,6 +12,7 @@
 
 #include <string>
 #include <sstream>
+#include <algorithm>
 
 
 #define WITH_LOGGING
@@ -23,7 +24,7 @@
 FileDatabasePersistor::FileDatabasePersistor( Database& database )
 	: m_database(database)
 {
-
+	pthread_mutex_init( &m_queue_mutex, NULL );
 }
 
 void FileDatabasePersistor::saveFileMainDataAndGetDBId( File &f ) throw( FileDatabasePersistor::FilePersistenceError)
@@ -31,13 +32,11 @@ void FileDatabasePersistor::saveFileMainDataAndGetDBId( File &f ) throw( FileDat
 	std::ostringstream sqlStream;
 	sqlStream << "INSERT INTO files( "
 				<< "file_path,"
-				<< "file_device_id,"
 				<< "file_creation_time,"
 				<< "file_modified_time,"
 				<< "file_size"
 				<< ") VALUES (" <<
 					"'" << f.m_stat.m_path << "'" << "," <<
-					"'" << f.m_stat.m_deviceId  <<"'"<<","<<
 					f.m_stat.m_created  <<","<<
 					f.m_stat.m_modified <<","<<
 					f.m_stat.m_size
@@ -115,34 +114,68 @@ void FileDatabasePersistor::saveComposer( const File &f ) throw( FileDatabasePer
 
 void FileDatabasePersistor::beginSave() throw ( FileDatabasePersistor::FilePersistenceError )
 {
+
 	m_database.writeLock();
+	try
+	{
+		m_database.executeInsertOrUpdate( "BEGIN TRANSACTION;" );
+	}
+	catch( const Database::Error & error )
+	{
+		throw FilePersistenceError( "database error : " + error.getMessage() );
+	}
 }
 
 void FileDatabasePersistor::commitSave() throw ( FileDatabasePersistor::FilePersistenceError )
 {
-	m_database.writeUnlock();
+	try
+	{
+		m_database.executeInsertOrUpdate( "COMMIT TRANSACTION;" );
+		m_database.writeUnlock();
+	}
+	catch( const Database::Error & error )
+	{
+		m_database.writeUnlock();
+		throw FilePersistenceError( "database error : " + error.getMessage() );
+	}
+
 }
 
 void FileDatabasePersistor::saveFile( File* f ) throw( FileDatabasePersistor::FilePersistenceError)
 {
+	std::list<File*> filesToSave;
+
+	pthread_mutex_lock(&m_queue_mutex);
+	m_queuedFiles.push_back(f);
+	if( m_queuedFiles.size() >= FILES_PER_TRANSACTION )
+	{
+		// push all data from m_queuedFiles to filesToSave and release m_queuedFiles for other trheads
+		std::copy(m_queuedFiles.begin(), m_queuedFiles.end(), std::back_inserter(filesToSave) );
+		m_queuedFiles.clear();
+	}
+	pthread_mutex_unlock(&m_queue_mutex);
+
 	try
 	{
-		beginSave();
-		saveFileMainDataAndGetDBId(*f);
-		saveTitle(*f );
-		saveAlbum(*f);
-		saveArtist(*f);
-		saveGenre(*f);
-		saveComposer(*f);
-		commitSave();
+			beginSave();
+			for( std::list<File *>::iterator fiter = filesToSave.begin(); fiter != filesToSave.end(); ++fiter )
+			{
+				saveFileMainDataAndGetDBId(**fiter);
+				saveTitle(**fiter );
+				saveAlbum(**fiter);
+				saveArtist(**fiter);
+				saveGenre(**fiter);
+				saveComposer(**fiter);
+				delete *fiter;
+			}
+			commitSave();
 	}
 	catch(FileDatabasePersistor::FilePersistenceError &error )
 	{
 #ifdef WITH_LOGGING
-		std::cout << "error saving file in db : " << error.getMessage() << std::endl;
+			std::cout << "error saving file in db : " << error.getMessage() << std::endl;
 #endif
-		m_database.writeUnlock();
+			m_database.writeUnlock();
 	}
-	delete f;
 }
 #endif /* FILE_DATABASE_PERSISTOR_CPP_ */

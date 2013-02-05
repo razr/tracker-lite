@@ -11,41 +11,126 @@
 #include "database.h"
 #include "file-metadata.h"
 
+#include <list>
+#include <pthread.h>
+
+/**
+ * files to be saved in one transaction
+ */
+#define FILES_PER_TRANSACTION 20
+/**
+ * @class FileDatabasePersistor
+ * @brief persistor for file metadata
+ */
 class FileDatabasePersistor
 {
-	Database& m_database;
-
+	Database& m_database; 			//!< database used to save metadata
+	std::list<File*> m_queuedFiles; //!< queued files to be saved in one transaction, @see FILES_PER_TRANSACTION
+	pthread_mutex_t m_queue_mutex;
 public:
+	/**
+	 * @brief persistence error
+	 */
 	class FilePersistenceError
 	{
-		std::string m_reason;
-		File m_file;
+		std::string m_message; //!<< error message
+
 	public:
+		/**
+		 * @brief constructor
+		 * @param file file where error occurred
+		 * @param reason error reason
+		 */
 		FilePersistenceError( const File& file, const std::string& reason )
 		{
-			m_file = file;
-			m_reason = reason;
+			m_message = "could not save file : " + file.m_stat.m_path + "reason : " + reason;
 		}
+		/**
+		 * @brief constructor
+		 * @param message the error message
+		 */
+		FilePersistenceError( const std::string& message )
+		{
+			m_message = message;
+		}
+		/**
+		 * @brief returns the error message
+		 * @return
+		 */
 		std::string getMessage()
 		{
-			return "could not save file : " + m_file.m_stat.m_path + "reason : " + m_reason;
+			return m_message;
 		}
 	};
+	/**
+	 * @brief generic save metadata for tables with same structure: title, artist, album, genre, composer
+	 * @param metadataValue string value to be saved
+	 * @param fieldName which table field to be used in DB
+	 * @param tableName which table to be used in db
+	 * @param f file object from ID is used to create one to one relation with file table
+	 */
 	virtual void genericSaveMetadata(const std::string& metadataValue,
 								     const std::string& fieldName,
 								     const std::string& tableName,
 								     const File& f ) throw ( FilePersistenceError );
 protected:
+	/**
+	 *@brief starts one or multiple files save in database
+	 *locks the database for write
+	 *starts DB transaction
+	 */
 	virtual void beginSave() throw ( FilePersistenceError );
+	/**
+	 * @brief saves main data in 'files' table - one row and generates id for File struct
+	 * @param f file to be saved
+	 */
 	virtual void saveFileMainDataAndGetDBId(  File &f ) throw ( FilePersistenceError );
+	/**
+	 * @brief saves title detail in separate table
+	 * saves title detail in separate table after main data saved in 'files' an id was generated
+	 * @param f file to be saved
+	 */
 	virtual void saveTitle( const File &f ) throw ( FilePersistenceError );
+	/**
+	* @brief saves artist detail in separate table
+	* saves artist detail in separate table after main data saved in 'files' an id was generated
+	* @param f file to be saved
+	*/
 	virtual void saveArtist( const File &f ) throw ( FilePersistenceError );
+	/**
+	* @brief saves album detail in separate table
+	* saves album detail in separate table after main data saved in 'files' an id was generated
+	* @param f file to be saved
+	*/
 	virtual void saveAlbum( const File &f ) throw ( FilePersistenceError );
+	/**
+	* @brief saves genre detail in separate table
+	* saves genre detail in separate table after main data saved in 'files' an id was generated
+	* @param f file to be saved
+	*/
 	virtual void saveGenre( const File &f ) throw ( FilePersistenceError );
+	/**
+	* @brief saves genre detail in separate table
+	* saves genre detail in separate table after main data saved in 'files' an id was generated
+	* @param f file to be saved
+	*/
 	virtual void saveComposer( const File &f ) throw ( FilePersistenceError );
+	/**
+	* @brief saves composer detail in separate table
+	* saves composer detail in separate table after main data saved in 'files' an id was generated
+	* @param f file to be saved
+	*/
 	virtual void commitSave() throw ( FilePersistenceError );
 public:
+	/**
+	 * @brief constructor
+	 * @param database
+	 */
 	FileDatabasePersistor( Database& database );
+	/**
+	 * @brief saves one file in database
+	 * @param f file to be saved
+	 */
 	void saveFile( File* f ) throw ( FilePersistenceError );
 	// loadFileByPathAndTimeStamp( File& f) throw ( FilePersistenceError );
 };

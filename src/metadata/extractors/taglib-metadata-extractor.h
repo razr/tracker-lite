@@ -9,7 +9,10 @@
 #define TAGLIB_METADATA_EXTRACTOR_H_
 
 #include "file-metadata-extractor.h"
-
+/**
+ * @class TagLib based implementation for AbstractFileMetadataExtractor
+ * @see AbstractFileMetadataExtractor
+ */
 class TagLibMetadataExtractor : public AbstractFileMetadataExtractor
 {
 public:

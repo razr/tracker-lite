@@ -128,7 +128,6 @@ std::string convertCStringToUTF8( const char *str, size_t size )
 	std::string retVal;
 	int confidence;
 	char* trusted_encoding = encoding_guess_libicu( str, size, &confidence);
-
 	if( trusted_encoding && confidence > 50 )
 	{
 #ifdef WITH_LOGGING

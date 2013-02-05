@@ -34,12 +34,12 @@ void Database::checkAndcreateFilesTable() throw( Database::Error )
 			  << "files ( "
 			  << "file_id INTEGER PRIMARY KEY AUTOINCREMENT,"
 			  << "file_path VARCHAR(4096),"
-			  << "file_device_id  	 INTEGER,"
 			  << "file_creation_time INTEGER,"
 			  << "file_modified_time INTEGER,"
 			  << "file_size INTEGER"
 			  <<")";
 	executeInsertOrUpdate( sqlStream.str() );
+	executeInsertOrUpdate( "CREATE INDEX IF NOT EXISTS fk_files_id ON files (file_path, file_creation_time, file_modified_time ASC);" );
 }
 void Database::checkAndcreateTitlesTable() throw( Database::Error )
 {
@@ -51,6 +51,7 @@ void Database::checkAndcreateTitlesTable() throw( Database::Error )
 				  << "title_name    VARCHAR(256)"
 				  <<")";
 	executeInsertOrUpdate( sqlStream.str() );
+	executeInsertOrUpdate( "CREATE INDEX IF NOT EXISTS fk_titles_id ON titles (file_id ASC);" );
 }
 void Database::checkAndcreateArtistsTable() throw( Database::Error )
 {
@@ -62,6 +63,7 @@ void Database::checkAndcreateArtistsTable() throw( Database::Error )
 					  << "artist_name    VARCHAR(256)"
 					  <<")";
 	executeInsertOrUpdate( sqlStream.str() );
+	executeInsertOrUpdate( "CREATE INDEX IF NOT EXISTS fk_artists_id ON artists (file_id  ASC);" );
 }
 void Database::checkAndcreateAlbumsTable() throw( Database::Error )
 {
@@ -73,6 +75,7 @@ void Database::checkAndcreateAlbumsTable() throw( Database::Error )
 						  << "album_name    VARCHAR(256)"
 						  <<")";
 	executeInsertOrUpdate( sqlStream.str() );
+	executeInsertOrUpdate( "CREATE INDEX IF NOT EXISTS fk_albums_id ON albums (file_id ASC);" );
 }
 void Database::checkAndcreateComposersTable() throw( Database::Error )
 {
@@ -84,6 +87,7 @@ void Database::checkAndcreateComposersTable() throw( Database::Error )
 						  << "composer_name   VARCHAR(256)"
 						  <<")";
 	executeInsertOrUpdate( sqlStream.str() );
+	executeInsertOrUpdate( "CREATE INDEX IF NOT EXISTS fk_composers_id ON composers (file_id ASC);" );
 }
 void Database::checkAndcreateGernesTable() throw( Database::Error )
 {
@@ -95,6 +99,7 @@ void Database::checkAndcreateGernesTable() throw( Database::Error )
 						  << "genre_name    VARCHAR(256)"
 						  <<")";
 	executeInsertOrUpdate( sqlStream.str() );
+	executeInsertOrUpdate( "CREATE INDEX IF NOT EXISTS fk_genres_id ON genres (file_id ASC);" );
 }
 
 void  Database::checkAndCreateTables() throw( Database::Error )

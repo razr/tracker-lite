@@ -61,6 +61,10 @@ void DeviceManager::handleDeviceInserted(const std::string& deviceId, const std:
 	{
 		std::cerr << "Fatal Error : " << error.getMessage() << std::endl;
 	}
+	catch( Database::Error& error )
+	{
+		std::cerr << "Fatal Error : " << error.getMessage() << std::endl;
+	}
 }
 
 void DeviceManager::fileSystemScanTerminated(void)

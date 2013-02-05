@@ -17,24 +17,30 @@
 
 class File;
 
-typedef boost::function<void(File*)> FileMetadataExtractedFunctionType;
 
+typedef boost::function<void(File*)> FileMetadataExtractedFunctionType;
+/**
+ * @class ThreadPool
+ * @brief ThreadPool used for metadata extraction
+ * Metadata extraction is optionally parallelized using a number of threads
+ * Each file is inserted in one's thread queue.
+ * When one thread finishes metadata extraction will call (m_onFileMetadataFunction) callback
+ * that will usually insert metadata in database
+ */
 class ThreadPool
 {
-	std::queue<std::string> m_queues[THREAD_POOL_SIZE];
-	pthread_mutex_t         m_queueMutexes[ THREAD_POOL_SIZE];
-	bool				    b_runThread[ THREAD_POOL_SIZE ];
-	pthread_t 			    m_threads[ THREAD_POOL_SIZE ];
-	/*stats*/
-#ifdef WITH_STATISTICS
-	int pushed[THREAD_POOL_SIZE];
-	int poped[THREAD_POOL_SIZE];
-#endif
-	FileMetadataExtractedFunctionType m_onFileMetadataFunction;
-	static void* threadFunction( void * arg );
-	void runThread(int threadId);
-	void processFile( const std::string& filePath, int threadId );
+	std::queue<std::string> m_queues[THREAD_POOL_SIZE]; //!< thread queues - will receive file paths
+	pthread_mutex_t         m_queueMutexes[ THREAD_POOL_SIZE]; //!< queue mutexes needed because queues are FIFOS across two threads
+	bool				    b_runThread[ THREAD_POOL_SIZE ]; //!< pool threads running flag. set to false to terminate
+	pthread_t 			    m_threads[ THREAD_POOL_SIZE ]; //!< threads object
+	FileMetadataExtractedFunctionType m_onFileMetadataFunction; //!< callback to be called whrn metadata extracted
+	static void* threadFunction( void * arg ); //!< posix thread function
+	void runThread(int threadId); //!<< object's thread method
+	void processFile( const std::string& filePath, int threadId ); //!< metadata extraction method
 public:
+	/**
+	 * @class ThreadPool error
+	 */
 	class Error
 		{
 			std::string m_message;
@@ -50,9 +56,27 @@ public:
 			}
 		};
 
+	/**
+	 * @enum TerminateMode
+	 * Two ways to terminate thread pool
+	 * 	WAIT_ALL will wait all thread queues to became empty
+	 * 	FORCE_TERMINATE will terminate asap
+	 */
 	enum TerminateMode{ WAIT_ALL, FORCE_TERMINATE };
+	/**
+	 * start thread pool
+	 * @param onFileMetadataExtractedFunc - callback to be called when file extracted
+	 */
 	void start( FileMetadataExtractedFunctionType onFileMetadataExtractedFunc);
+	/**
+	 * terminate thread pool
+	 * @param mode - mode to terminate @see TerminateMode
+	 */
 	void terminate( const TerminateMode mode);
+	/**
+	 * push one file to one of the threads for metadata extraction
+	 * @param fileName - complete path to file on filesystem
+	 */
 	void pushFile( const std::string& fileName );
 };
 
