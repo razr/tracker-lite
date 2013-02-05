@@ -33,6 +33,7 @@ class ThreadPool
 	pthread_mutex_t         m_queueMutexes[ THREAD_POOL_SIZE]; //!< queue mutexes needed because queues are FIFOS across two threads
 	bool				    b_runThread[ THREAD_POOL_SIZE ]; //!< pool threads running flag. set to false to terminate
 	pthread_t 			    m_threads[ THREAD_POOL_SIZE ]; //!< threads object
+	bool					b_threadsStarted[ THREAD_POOL_SIZE ];
 	FileMetadataExtractedFunctionType m_onFileMetadataFunction; //!< callback to be called whrn metadata extracted
 	static void* threadFunction( void * arg ); //!< posix thread function
 	void runThread(int threadId); //!<< object's thread method
@@ -55,6 +56,10 @@ public:
 				return "ThreadPool error : " + m_message;
 			}
 		};
+	/**
+	 * @brief constructor
+	 */
+	ThreadPool();
 
 	/**
 	 * @enum TerminateMode

@@ -54,7 +54,11 @@ void DeviceManager::handleDeviceInserted(const std::string& deviceId, const std:
 		m_metadataExtractingPool.terminate( ThreadPool::WAIT_ALL);
 		m_filePersistor->flush();
 		m_database.close();
+#ifdef __arm__
+		m_database.open( "/var/tracker_db_" + deviceId);
+#else
 		m_database.open( "tracker_db_" + deviceId);
+#endif
 		m_metadataExtractingPool.start( boost::bind( &FileDatabasePersistor::saveFile, m_filePersistor, _1) );
 		m_fileSystemScanner.startScanFolderRecursively( devicePath );
 	}

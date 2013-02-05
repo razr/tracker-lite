@@ -30,6 +30,14 @@
 #include <iostream>
 #endif
 
+ThreadPool::ThreadPool()
+{
+	for( int i = 0; i < THREAD_POOL_SIZE ; ++ i )
+	{
+			b_threadsStarted[i] = false;
+	}
+}
+
 void * ThreadPool::threadFunction( void * arg )
 {
 	std::pair<ThreadPool*, int> * argPair = static_cast< std::pair<ThreadPool*, int> * > ( arg );
@@ -90,6 +98,7 @@ void ThreadPool::start(FileMetadataExtractedFunctionType onFileMetadataExtracted
 		b_runThread[i] = true;
 		std::pair<ThreadPool*, int> *pair = new std::pair<ThreadPool*, int>(this, i);
 		pthread_create( & m_threads[i], NULL, threadFunction, pair);
+		b_threadsStarted[i] = true;
 	}
 }
 
@@ -102,9 +111,14 @@ void ThreadPool::terminate( const ThreadPool::TerminateMode mode)
 
 	if( mode == WAIT_ALL )
 	{
+
 		for( int i = 0; i < THREAD_POOL_SIZE ; ++ i )
 		{
-			pthread_join( m_threads[i], NULL );
+			if( b_threadsStarted[i])
+			{
+				pthread_join( m_threads[i], NULL );
+				b_threadsStarted[i] = false;
+			}
 		}
 	}
 }

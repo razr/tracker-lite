@@ -14,7 +14,7 @@ gboolean newDeviceAdded( gpointer ptr)
 	return FALSE;
 }
 
-int main()
+int main( int argc, char * argv[])
 {
 	GMainLoop *loop = g_main_loop_new ( NULL , FALSE );
 
@@ -40,8 +40,45 @@ int main()
     // this method should called when usb stick inserted
 	// see Linux 'mount' or 'ls /media' for more details, usually the mount point differ
 	// we emulate this with hard-coded test values
-	DeviceManager::getInstance().handleDeviceInserted("BDB4-A56F", "/media/BDB4-A56F");
 
+
+
+    gchar * deviceId = NULL;
+    gchar * devicePath = NULL;
+
+
+
+    GOptionEntry options[] =
+    {
+        { "device-id",   'i', 0, G_OPTION_ARG_STRING, &deviceId, "deviceID ", NULL },
+        { "device-path", 'p', 0, G_OPTION_ARG_STRING, &devicePath, "devicePath ", NULL },
+
+        { NULL }
+    };
+
+    GOptionContext *optionContext = g_option_context_new(NULL);
+    g_option_context_add_main_entries(optionContext, options, NULL);
+
+    GError *error = NULL;
+    if( !g_option_context_parse(optionContext, &argc, &argv, &error)) {
+        std::cout << "Option parsing failed: " <<  error->message << std::endl;
+        return 1;
+    }
+
+    if( deviceId == NULL )
+    {
+    	std::cout << "Invalid device id" << std::endl;
+    	return -2;
+    }
+
+    if( devicePath == NULL )
+    {
+    	std::cout << "Invalid device path" << std::endl;
+    	return -3;
+    }
+
+    DeviceManager::getInstance().handleDeviceInserted(deviceId, devicePath);
+    //DeviceManager::getInstance().handleDeviceInserted("BDB4-A56F", "/media/BDB4-A56F");
 	/*
 	 *  optionally we can emulate other device inserted
 	 * the current scan should be canceled
@@ -51,9 +88,9 @@ int main()
 
 	//g_timeout_add_seconds( 10, newDeviceAdded, loop );
 
+
 	g_main_loop_run (loop);
 	g_main_loop_unref (loop);
-
 
 	return 0;
 }
