@@ -22,6 +22,7 @@ class Database
 	std::string m_fileName; //!< database file name
 	sqlite3 *m_dbConn; //!< database connection obiect
 	pthread_mutex_t   m_mutextWriteLock; //!< write mutex ( database connection should not be used from different thread simultaneously )
+	bool m_inTransaction; //!< database is in transaction
 public:
 	/**
 	 * @brief Database exception
@@ -49,10 +50,6 @@ public:
 		}
 	};
 protected:
-	/**
-	 * @brief create 'Devices' table if not exists, at startup
-	 */
-	void checkAndcreateDevicesTable() throw( Error );
 	/**
 	* @brief create 'Files' table if not exists, at startup
 	*/
@@ -90,9 +87,25 @@ public:
 	* @brief unlocks the database handle after write
 	*/
 	void writeUnlock();
+
 	/**
-	 * @brief constructor
+	 * @brief begins transaction
+	 * if transaction already started, does nothing
 	 */
+	void beginTransaction() throw( Error );
+	/**
+	 * @brief commits active transaction, if any
+	 * if no active transaction, does nothing
+	 */
+	void commitTransaction() throw( Error );
+	/**
+	 * @brief roolback active transaction, if any
+	 * if no active transaction, does nothing
+	 */
+	void rollbackTransaction() throw( Error );
+	/**
+    * @brief constructor
+	*/
 	Database();
 	/**
 	 * @brief open database

@@ -19,13 +19,11 @@
 Database::Database()
 {
 	m_dbConn = NULL;
+	m_inTransaction = false;
 	pthread_mutex_init(& m_mutextWriteLock, NULL );
 }
 
-void Database::checkAndcreateDevicesTable() throw( Database::Error )
-{
 
-}
 
 void Database::checkAndcreateFilesTable() throw( Database::Error )
 {
@@ -104,9 +102,6 @@ void Database::checkAndcreateGernesTable() throw( Database::Error )
 
 void  Database::checkAndCreateTables() throw( Database::Error )
 {
-
-
-
 	try
 	{
 		writeLock();
@@ -180,7 +175,33 @@ void Database::close()
 	{
 		sqlite3_close( m_dbConn );
 		m_dbConn = NULL;
+		m_inTransaction = false;
 	}
 }
 
+void Database::beginTransaction() throw( Error )
+{
+	if( ! m_inTransaction )
+	{
+		executeInsertOrUpdate("BEGIN TRANSACTION;");
+		m_inTransaction = true;
+	}
+}
 
+void Database::commitTransaction() throw( Error )
+{
+	if( m_inTransaction )
+	{
+		executeInsertOrUpdate("COMMIT TRANSACTION;");
+		m_inTransaction = false;
+	}
+}
+
+void Database::rollbackTransaction() throw( Error )
+{
+	if( m_inTransaction )
+	{
+		executeInsertOrUpdate("ROLLBACK TRANSACTION;");
+		m_inTransaction = false;
+	}
+}

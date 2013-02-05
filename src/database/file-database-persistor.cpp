@@ -118,7 +118,7 @@ void FileDatabasePersistor::beginSave() throw ( FileDatabasePersistor::FilePersi
 	m_database.writeLock();
 	try
 	{
-		m_database.executeInsertOrUpdate( "BEGIN TRANSACTION;" );
+		m_database.beginTransaction();
 	}
 	catch( const Database::Error & error )
 	{
@@ -130,7 +130,7 @@ void FileDatabasePersistor::commitSave() throw ( FileDatabasePersistor::FilePers
 {
 	try
 	{
-		m_database.executeInsertOrUpdate( "COMMIT TRANSACTION;" );
+		m_database.commitTransaction();
 		m_database.writeUnlock();
 	}
 	catch( const Database::Error & error )
@@ -144,7 +144,6 @@ void FileDatabasePersistor::commitSave() throw ( FileDatabasePersistor::FilePers
 void FileDatabasePersistor::saveFile( File* f ) throw( FileDatabasePersistor::FilePersistenceError)
 {
 	std::list<File*> filesToSave;
-
 	pthread_mutex_lock(&m_queue_mutex);
 	m_queuedFiles.push_back(f);
 	if( m_queuedFiles.size() >= FILES_PER_TRANSACTION )
@@ -155,18 +154,35 @@ void FileDatabasePersistor::saveFile( File* f ) throw( FileDatabasePersistor::Fi
 	}
 	pthread_mutex_unlock(&m_queue_mutex);
 
+	if(filesToSave.size() > 0 )
+		saveCachedFiles( filesToSave );
+
+}
+
+
+void FileDatabasePersistor::saveCachedFiles(const std::list<File*>& filesToSave)
+{
 	try
 	{
 			beginSave();
-			for( std::list<File *>::iterator fiter = filesToSave.begin(); fiter != filesToSave.end(); ++fiter )
+			for( std::list<File *>::const_iterator fiter = filesToSave.begin(); fiter != filesToSave.end(); ++fiter )
 			{
-				saveFileMainDataAndGetDBId(**fiter);
-				saveTitle(**fiter );
-				saveAlbum(**fiter);
-				saveArtist(**fiter);
-				saveGenre(**fiter);
-				saveComposer(**fiter);
-				delete *fiter;
+				try
+				{
+					saveFileMainDataAndGetDBId(**fiter);
+					saveTitle(**fiter );
+					saveAlbum(**fiter);
+					saveArtist(**fiter);
+					saveGenre(**fiter);
+					saveComposer(**fiter);
+					delete *fiter;
+				}
+				catch( FilePersistenceError& error)
+				{
+#ifdef WITH_LOGGING
+			std::cout << "error saving file in db : " << error.getMessage() << std::endl;
+#endif
+				}
 			}
 			commitSave();
 	}
@@ -175,7 +191,17 @@ void FileDatabasePersistor::saveFile( File* f ) throw( FileDatabasePersistor::Fi
 #ifdef WITH_LOGGING
 			std::cout << "error saving file in db : " << error.getMessage() << std::endl;
 #endif
+			m_database.rollbackTransaction();
 			m_database.writeUnlock();
 	}
+}
+
+void FileDatabasePersistor::flush()
+{
+#ifdef WITH_LOGGING
+	std::cout << "flushing cached file for persistence found : " << m_queuedFiles.size() << " remaining file" << std::endl;
+#endif
+	if( m_queuedFiles.size() > 0 )
+		saveCachedFiles(m_queuedFiles);
 }
 #endif /* FILE_DATABASE_PERSISTOR_CPP_ */

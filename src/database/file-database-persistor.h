@@ -17,7 +17,7 @@
 /**
  * files to be saved in one transaction
  */
-#define FILES_PER_TRANSACTION 20
+#define FILES_PER_TRANSACTION 5
 /**
  * @class FileDatabasePersistor
  * @brief persistor for file metadata
@@ -121,6 +121,8 @@ protected:
 	* @param f file to be saved
 	*/
 	virtual void commitSave() throw ( FilePersistenceError );
+
+	void saveCachedFiles(const std::list<File*>& m_filesToSave);
 public:
 	/**
 	 * @brief constructor
@@ -133,6 +135,12 @@ public:
 	 */
 	void saveFile( File* f ) throw ( FilePersistenceError );
 	// loadFileByPathAndTimeStamp( File& f) throw ( FilePersistenceError );
+
+	/**
+	 * @brief saves all cached files
+	 *
+	 */
+	void flush();
 };
 
 

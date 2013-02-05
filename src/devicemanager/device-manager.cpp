@@ -52,6 +52,7 @@ void DeviceManager::handleDeviceInserted(const std::string& deviceId, const std:
 	{
 		m_fileSystemScanner.cancelScan();
 		m_metadataExtractingPool.terminate( ThreadPool::WAIT_ALL);
+		m_filePersistor->flush();
 		m_database.close();
 		m_database.open( "tracker_db_" + deviceId);
 		m_metadataExtractingPool.start( boost::bind( &FileDatabasePersistor::saveFile, m_filePersistor, _1) );
@@ -74,6 +75,7 @@ void DeviceManager::fileSystemScanTerminated(void)
 	Statistics::getInstance().fsScanFinished();
 #endif
 	m_metadataExtractingPool.terminate( ThreadPool::WAIT_ALL);
+	m_filePersistor->flush();
 #ifdef WITH_STATISTICS
 	Statistics::getInstance().metadataExtractFinished();
 	Statistics::getInstance().print();
