@@ -6,23 +6,30 @@
  */
 
 #include "database.h"
+#include "logging.h"
 #include <sqlite3.h>
 #include <sstream>
-
-#define WITH_SQL_LOGGING
-
-
-#ifdef WITH_SQL_LOGGING
-#include <iostream>
-#endif
 
 Database::Database()
 {
 	m_dbConn = NULL;
 	m_inTransaction = false;
-	pthread_mutex_init(& m_mutextWriteLock, NULL );
+	g_mutex_init(&m_mutextWriteLock);
 }
 
+void Database::checkAndcreateFoldersTable() throw( Database::Error )
+{
+
+	std::ostringstream sqlStream;
+	sqlStream << "CREATE TABLE IF NOT EXISTS "
+			  << "folders ( "
+			  << "folder_id INTEGER PRIMARY KEY AUTOINCREMENT,"
+			  << "folder_path VARCHAR(4096),"
+			  << "folder_modified_time INTEGER"
+			  <<")";
+	executeInsertOrUpdate( sqlStream.str() );
+	executeInsertOrUpdate( "CREATE INDEX IF NOT EXISTS fk_folders_id ON folders (folder_path ASC);" );
+}
 
 
 void Database::checkAndcreateFilesTable() throw( Database::Error )
@@ -34,11 +41,13 @@ void Database::checkAndcreateFilesTable() throw( Database::Error )
 			  << "file_path VARCHAR(4096),"
 			  << "file_creation_time INTEGER,"
 			  << "file_modified_time INTEGER,"
-			  << "file_size INTEGER"
+			  << "file_size INTEGER,"
+			  << "parent_folder_id INTEGER"
 			  <<")";
 	executeInsertOrUpdate( sqlStream.str() );
 	executeInsertOrUpdate( "CREATE INDEX IF NOT EXISTS fk_files_id ON files (file_path, file_creation_time, file_modified_time ASC);" );
 }
+
 void Database::checkAndcreateTitlesTable() throw( Database::Error )
 {
 	std::ostringstream sqlStream;
@@ -105,6 +114,7 @@ void  Database::checkAndCreateTables() throw( Database::Error )
 	try
 	{
 		writeLock();
+		checkAndcreateFoldersTable();
 		checkAndcreateFilesTable();
 		checkAndcreateTitlesTable();
 		checkAndcreateArtistsTable();
@@ -121,11 +131,9 @@ void  Database::checkAndCreateTables() throw( Database::Error )
 	}
 }
 
-int64_t Database::executeInsertOrUpdate( const std::string& sql ) throw( Database::Error )
+gint64 Database::executeInsertOrUpdate( const std::string& sql ) throw( Database::Error )
 {
-#ifdef WITH_SQL_LOGGING
-		std::cout << " Execute INSERT/UPDATE SQL = " << sql << std::endl;
-#endif
+	LOG( LOG_VERBOSE, " Execute INSERT/UPDATE SQL = %s", sql.c_str() );
 	char *errMsg = NULL;
 	if( ! m_dbConn )
 	{
@@ -146,12 +154,16 @@ int64_t Database::executeInsertOrUpdate( const std::string& sql ) throw( Databas
 
 void Database::writeLock()
 {
-	pthread_mutex_lock(& m_mutextWriteLock );
+	g_mutex_lock( &m_mutextWriteLock );
 }
 
 void Database::writeUnlock()
 {
-	pthread_mutex_unlock(& m_mutextWriteLock );
+	g_mutex_unlock( &m_mutextWriteLock );
+}
+Database::~Database()
+{
+
 }
 
 void Database::open(const std::string& fileName ) throw (Database::Error)
@@ -204,4 +216,112 @@ void Database::rollbackTransaction() throw( Error )
 		executeInsertOrUpdate("ROLLBACK TRANSACTION;");
 		m_inTransaction = false;
 	}
+}
+
+
+DatabaseStatement* Database::prepareStatement( const std::string& sql ) throw( Error )
+{
+	sqlite3_stmt* stmt;
+	sqlite3_prepare_v2(m_dbConn, sql.c_str(), sql.length() + 1, &stmt, NULL );
+	return new DatabaseStatement( m_dbConn, stmt );
+}
+
+
+
+DatabaseStatement::DatabaseStatement(sqlite3 *dbConn, sqlite3_stmt *stmt)
+	: m_stmt( stmt )
+{
+	m_state = SQLITE_DETACH;
+	m_dbConn = dbConn;
+}
+
+
+void DatabaseStatement::bindInt   ( unsigned int paramNumber, int value )
+{
+	 if (sqlite3_bind_int (
+	        m_stmt,
+	        (int)paramNumber,  // Index of wildcard
+	        value
+	        )
+	      != SQLITE_OK)
+	   {
+		 std::string errMsg = std::string("can't bind parameter ") + sqlite3_errmsg(m_dbConn);
+		 throw new Database::Error(errMsg);
+	   }
+}
+void DatabaseStatement::bindString( unsigned int paramNumber, const std::string& value )
+{
+	  if (sqlite3_bind_text (
+	        m_stmt,
+	        (int)paramNumber,  // Index of wildcard
+	        value.c_str(),
+	        value.length()+1,
+	        NULL )
+	      != SQLITE_OK)
+	   {
+		  std::string errMsg = std::string("can't bind parameter ") + sqlite3_errmsg(m_dbConn);
+		  throw new Database::Error(errMsg);
+	   }
+}
+void DatabaseStatement::exec()
+{
+	do
+	{
+		m_state = sqlite3_step(m_stmt);
+		switch( m_state )
+		{
+			case SQLITE_DONE:
+			case SQLITE_ROW:
+				return;
+
+			case SQLITE_ERROR:
+			{
+				std::string errMsg = std::string("can't bind parameter ") + sqlite3_errmsg(m_dbConn);
+				throw new Database::Error(errMsg);
+			}
+
+			default:
+				break;
+		}
+	}while( m_state == SQLITE_BUSY );
+}
+bool DatabaseStatement::isDone()
+{
+	return m_state != SQLITE_ROW;
+}
+
+void DatabaseStatement::release()
+{
+	m_state = 0;
+}
+void DatabaseStatement::nextRow()
+{
+		do
+		{
+			m_state = sqlite3_step(m_stmt);
+			switch( m_state )
+			{
+				case SQLITE_DONE:
+				case SQLITE_ROW:
+					return;
+
+				case SQLITE_ERROR:
+				{
+					std::string errMsg = std::string("can't bind parameter ") + sqlite3_errmsg(m_dbConn);
+					throw new Database::Error(errMsg);
+				}
+
+				default:
+					break;
+			}
+		}while( m_state == SQLITE_BUSY );
+}
+
+std::string	DatabaseStatement::getFieldAsString( const std::string& fieldName )
+{
+
+}
+gint64	DatabaseStatement::getFieldAsInteger( const std::string& fieldName )
+{
+
 }

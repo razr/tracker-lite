@@ -11,8 +11,8 @@
 #include "database.h"
 #include "file-metadata.h"
 
+#include <glib.h>
 #include <list>
-#include <pthread.h>
 
 /**
  * files to be saved in one transaction
@@ -26,7 +26,7 @@ class FileDatabasePersistor
 {
 	Database& m_database; 			//!< database used to save metadata
 	std::list<File*> m_queuedFiles; //!< queued files to be saved in one transaction, @see FILES_PER_TRANSACTION
-	pthread_mutex_t m_queue_mutex;
+	GMutex *m_queue_mutex;
 public:
 	/**
 	 * @brief persistence error
@@ -81,9 +81,15 @@ protected:
 	 */
 	virtual void beginSave() throw ( FilePersistenceError );
 	/**
+	 * saves new  parent folder in 'folder tables if not exists
+	 * @param f file containing folder information
+	 */
+	void saveParentFolderOrGetId(File& f) throw( FileDatabasePersistor::FilePersistenceError);
+	/**
 	 * @brief saves main data in 'files' table - one row and generates id for File struct
 	 * @param f file to be saved
 	 */
+
 	virtual void saveFileMainDataAndGetDBId(  File &f ) throw ( FilePersistenceError );
 	/**
 	 * @brief saves title detail in separate table
@@ -135,7 +141,6 @@ public:
 	 */
 	void saveFile( File* f ) throw ( FilePersistenceError );
 	// loadFileByPathAndTimeStamp( File& f) throw ( FilePersistenceError );
-
 	/**
 	 * @brief saves all cached files
 	 *

@@ -9,7 +9,7 @@
 #define FILE_METADATA_H_
 
 #include <string>
-#include <sys/types.h>
+#include <glib.h>
 
 /**
  * @struct File
@@ -33,11 +33,13 @@ struct File
 	class DB
 	{
 	public:
-		int64_t m_Id;
+		gint64 m_Id;
+		gint64 m_folderId;
 		/// constructor
 		DB()
 		{
 			m_Id = 0; // not saved yet
+			m_folderId = 0;
 		}
 	}m_db;
 
@@ -49,7 +51,9 @@ struct File
 		std::string m_path; //!< file path
 		time_t		m_created; //!< creation time
 		time_t		m_modified; //!< modified time
-		int64_t     m_size; //!< size of file, in bytes
+		gint64      m_size; //!< size of file, in bytes
+		std::string m_folderPath; //!< parent folder path
+		time_t		m_folderLastModified; //!< parent folder last modified
 	} m_stat;
 
 	/** @struct FileSystem

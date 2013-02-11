@@ -8,10 +8,32 @@
 #ifndef DATABASE_H_
 #define DATABASE_H_
 
+#include <glib.h>
 #include <sqlite3.h>
 #include <string>
-#include <sys/types.h>
-#include <pthread.h>
+
+class Database;
+
+
+class DatabaseStatement
+{
+	friend class Database;
+private:
+	sqlite3_stmt *m_stmt;
+	sqlite3		 *m_dbConn;
+	int 		  m_state;
+	DatabaseStatement(sqlite3* dbConn, sqlite3_stmt *stmt); // only database can create statements;
+public:
+
+	virtual void bindInt   ( unsigned int paramNumber, int value );
+	virtual void bindString( unsigned int paramNumber, const std::string& value );
+	void exec();
+	bool isDone();
+	void nextRow();
+	std::string				 getFieldAsString( const std::string& fieldName );
+	gint64					 getFieldAsInteger( const std::string& fieldName );
+	void release();
+};
 
 /**
  * @class Database
@@ -21,7 +43,7 @@ class Database
 {
 	std::string m_fileName; //!< database file name
 	sqlite3 *m_dbConn; //!< database connection obiect
-	pthread_mutex_t   m_mutextWriteLock; //!< write mutex ( database connection should not be used from different thread simultaneously )
+	GMutex   m_mutextWriteLock; //!< write mutex ( database connection should not be used from different thread simultaneously )
 	bool m_inTransaction; //!< database is in transaction
 public:
 	/**
@@ -50,6 +72,10 @@ public:
 		}
 	};
 protected:
+	/**
+	* @brief create 'Folders' table if not exists, at startup
+	*/
+	void checkAndcreateFoldersTable() throw( Error );
 	/**
 	* @brief create 'Files' table if not exists, at startup
 	*/
@@ -108,6 +134,10 @@ public:
 	*/
 	Database();
 	/**
+    * @brief constructor
+	*/
+	~Database();
+	/**
 	 * @brief open database
 	 * @param fileName the file name to be used
 	 */
@@ -117,7 +147,14 @@ public:
 	 * @param sql to be executed
 	 * @return the 'last insert id' if there is one
 	 */
-	int64_t executeInsertOrUpdate( const std::string& sql ) throw( Error );
+	gint64 executeInsertOrUpdate( const std::string& sql ) throw( Error );
+
+	/**
+	 * prepare select statement
+	 * @param sql
+	 * @return
+	 */
+	DatabaseStatement* prepareStatement( const std::string& sql ) throw( Error );
 	/**
 	 * @brief closes the database
 	 */

@@ -11,14 +11,9 @@
 #include <unicode/ucsdet.h>
 #include <cstring>
 
-#define WITH_LOGGING
-
-#ifdef WITH_LOGGING
-#include <iostream>
-#endif
-
 #include "config.h"
 #include "string-encoding.h"
+#include "logging.h"
 
 #define HAVE_CONTRY_CODE
 #ifdef  HAVE_CONTRY_CODE
@@ -52,36 +47,32 @@ gchar * encoding_guess_libicu (const gchar *buffer,
 	ucm = ucsdet_detect(csd, &status);
 	int32_t matchesFound;
 	const UCharsetMatch ** allMatches = ucsdet_detectAll(csd,&matchesFound, &status);
-#ifdef WITH_LOGGING
-    std::cout << "found " << matchesFound << " possible matches " << std::endl;
-#endif
+	LOG(LOG_VERBOSE, "found %d possible matches", matchesFound );
 	for( int32_t i = 0; i < matchesFound; ++ i)
 	{
 		const char* name = ucsdet_getName(allMatches[i], &status);
 		encoding = g_strdup(name);
 		int32_t confidence = ucsdet_getConfidence(allMatches[i], &status);
-#ifdef WITH_LOGGING
-		std::cout << "Match " << encoding << " -> " << confidence << std::endl;
-#endif
+		LOG(LOG_VERBOSE, "match %s with confidence %d", encoding, confidence);
 	}
 
 	if( ucm != NULL )
 	{
 		const char* name = ucsdet_getName(ucm, &status);
 		encoding = g_strdup(name);
-		ucsdet_close(csd);
 		ucsdet_enableInputFilter(csd, true);
 		int32_t confidence = ucsdet_getConfidence(ucm, &status);
 		if( confidence_out )
 		   *confidence_out = confidence;
-#ifdef WITH_LOGGING
+
 		if (encoding)
-			std::cout << "guessing charset as '" << encoding << "' with confidence " << confidence << std::endl;
-#endif
+			LOG(LOG_VERBOSE, "charset guess : %s with confidence %d", encoding, confidence );
+		ucsdet_close(csd);
 		return encoding;
 	}
-	else
-		return NULL;
+
+	ucsdet_close(csd);
+	return NULL;
 }
 
 
@@ -95,9 +86,8 @@ static gchar * convert_to_encoding(const gchar  *str,
 {
     GError *error = NULL;
     gchar *word;
-#ifdef WITH_LOGGING
-     std::cout << "from " << from_codeset << " to " << to_codeset << " : " << str << std::endl;
-#endif
+    LOG(LOG_VERBOSE, "converting from % to %s", from_codeset, to_codeset  );
+
     word = g_convert (str,
                       len,
                       to_codeset,
@@ -106,34 +96,31 @@ static gchar * convert_to_encoding(const gchar  *str,
                       bytes_written,
                       &error);
 
-
-    if (error)
+    if (error!=NULL)
     {
-#ifdef WITH_LOGGING
-    	std::cout <<  error->message  << std::endl;
-#endif
-    	g_error_copy( error );
-    	return NULL;
+    	LOG(LOG_ERROR, "convert error : %s", error->message );
     }
+    else
+    	LOG(LOG_VERBOSE, "convert done : %s", word );
 
     return word;
 }
 std::string convertStringToUTF8( const std::string& str )
 {
+//	LOG(LOG_VERBOSE, "str = %s", str.c_str()  );
 	return convertCStringToUTF8( str.c_str(), str.length() );
 }
 
 std::string convertCStringToUTF8( const char *str, size_t size )
 {
+
 	std::string retVal;
 	int confidence;
 	char* trusted_encoding = encoding_guess_libicu( str, size, &confidence);
 	if( trusted_encoding && confidence > 50 )
 	{
-#ifdef WITH_LOGGING
-	  std::cout << "trusted encoding" << trusted_encoding << std::endl;
-#endif
-	char* guessEncoding = convert_to_encoding(
+	  LOG( LOG_VERBOSE, "trust encoding %s", trusted_encoding );
+	  char* guessEncoding = convert_to_encoding(
 												  str,
 												  size,
 												  "UTF-8",
@@ -142,14 +129,8 @@ std::string convertCStringToUTF8( const char *str, size_t size )
 
 		if( guessEncoding )
 		{
-#ifdef WITH_LOGGING
-			   std::cout << "converted as : '" << guessEncoding <<"'" << std::endl;
-			   for( unsigned int i = 0; i < strlen( guessEncoding); ++i )
-			   {
-				   g_print( " 0x%02x, ", (char)guessEncoding[i]);
-			   }
-#endif
-			 return guessEncoding;
+			LOG(LOG_VERBOSE, "converted as : %s", guessEncoding );
+			return guessEncoding;
 		}
 	}
 #ifdef HAVE_CONTRY_CODE
@@ -159,9 +140,7 @@ std::string convertCStringToUTF8( const char *str, size_t size )
 	{
 		for( int i=0; i< allowed_encodings_size ; ++i)
 			    {
-#ifdef WITH_LOGGING
-			    	std::cout << "trying to decode with : " << allowed_encodings[i] << std::endl;
-#endif
+					LOG(LOG_VERBOSE, "trying to decode with : %s ", allowed_encodings[i] );
 					char* prioEncoding = convert_to_encoding(
 															  str,
 															  size,
@@ -170,10 +149,8 @@ std::string convertCStringToUTF8( const char *str, size_t size )
 															  NULL, NULL, NULL);
 					if( prioEncoding )
 					{
-#ifdef WITH_LOGGING
-						   std::cout << "converted as : '" << prioEncoding <<"'" << std::endl;
-#endif
-						   return prioEncoding;
+						LOG(LOG_VERBOSE, "converted ad : %s", prioEncoding );
+						return prioEncoding;
 					}
 			    }
 	}

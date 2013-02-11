@@ -2,7 +2,7 @@
  * content-extractor.cpp
  *
  *  Created on: Jan 30, 2013
- *      Author: ionut
+ *      Author: ionut.neicu@windriver.com
  */
 
 #ifndef CONTENT_EXTRACTOR_CPP_

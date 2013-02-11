@@ -9,22 +9,64 @@
 #define FILE_DATABASE_PERSISTOR_CPP_
 
 #include "file-database-persistor.h"
+#include "logging.h"
 
 #include <string>
 #include <sstream>
 #include <algorithm>
 
 
-#define WITH_LOGGING
-
-#ifdef WITH_LOGGING
-#include <iostream>
-#endif
-
 FileDatabasePersistor::FileDatabasePersistor( Database& database )
 	: m_database(database)
 {
-	pthread_mutex_init( &m_queue_mutex, NULL );
+	m_queue_mutex = g_mutex_new();
+}
+
+void FileDatabasePersistor::saveParentFolderOrGetId(File& f) throw( FileDatabasePersistor::FilePersistenceError)
+{
+	static const std::string selectStatement = "SELECT ID FROM folders WHERE folder_path = ?";
+	static DatabaseStatement* statement = NULL;
+	if( statement == NULL )
+		statement = m_database.prepareStatement( selectStatement );
+	try
+	{
+		statement->bindString(1, f.m_stat.m_folderPath);
+
+		for( statement->exec(); ! statement->isDone(); statement->nextRow() )
+		{
+			f.m_db.m_folderId = statement->getFieldAsInteger("foldercount");
+			break;
+		}
+		statement->release();
+	}
+	catch( Database::Error & error )
+	{
+		LOG(LOG_WARN, "database error %s", error.getMessage().c_str() );
+	}
+
+	// cannot find folder id in database, add new one:
+
+	std::ostringstream sqlStream;
+	sqlStream << "INSERT INTO folder( "
+				<< "folder_path,"
+				<< "folder_creation_time,"
+				<< "file_modified_time,"
+				<< "file_size"
+				<< ") VALUES (" <<
+					"'" << f.m_stat.m_path << "'" << "," <<
+					f.m_stat.m_created  <<","<<
+					f.m_stat.m_modified <<","<<
+					f.m_stat.m_size
+				<< ")";
+	try
+	{
+		// execute update and set the file database unique ID
+		f.m_db.m_folderId = m_database.executeInsertOrUpdate( sqlStream.str() );
+	}
+	catch( const Database::Error & error )
+	{
+		throw FilePersistenceError( f, "database error : " + error.getMessage() );
+	}
 }
 
 void FileDatabasePersistor::saveFileMainDataAndGetDBId( File &f ) throw( FileDatabasePersistor::FilePersistenceError)
@@ -64,9 +106,7 @@ void FileDatabasePersistor::genericSaveMetadata(const std::string& metadataValue
 
 	if( metadataValue.empty() )
 	{
-#ifdef WITH_LOGGING
-		std::cout << "emtpy [" << fieldName <<"] metadata for file :" << f.m_stat.m_path << std::endl;
-#endif
+		LOG(LOG_VERBOSE, "emtpy %s metadata for file %s", fieldName.c_str(), f.m_stat.m_path.c_str() );
 		return;
 	}
 
@@ -85,7 +125,8 @@ void FileDatabasePersistor::genericSaveMetadata(const std::string& metadataValue
 
 	catch( const Database::Error & error )
 	{
-		throw FilePersistenceError( f, "\n\ndatabase error : " + error.getMessage() );
+		LOG(LOG_ERROR, "error saving file %s : %s", f.m_stat.m_path.c_str(), error.getMessage().c_str()  );
+		throw FilePersistenceError( f, "database error, " + error.getMessage() );
 	}
 }
 
@@ -143,20 +184,24 @@ void FileDatabasePersistor::commitSave() throw ( FileDatabasePersistor::FilePers
 
 void FileDatabasePersistor::saveFile( File* f ) throw( FileDatabasePersistor::FilePersistenceError)
 {
+	LOG(LOG_VERBOSE, "saving file : %s", f->m_stat.m_path.c_str() );
 	std::list<File*> filesToSave;
-	pthread_mutex_lock(&m_queue_mutex);
+
+	g_mutex_lock( m_queue_mutex );
+
+	// just queue file :
 	m_queuedFiles.push_back(f);
+	// if number of queued files for save is big enough, save them
 	if( m_queuedFiles.size() >= FILES_PER_TRANSACTION )
 	{
 		// push all data from m_queuedFiles to filesToSave and release m_queuedFiles for other trheads
 		std::copy(m_queuedFiles.begin(), m_queuedFiles.end(), std::back_inserter(filesToSave) );
 		m_queuedFiles.clear();
 	}
-	pthread_mutex_unlock(&m_queue_mutex);
+	g_mutex_unlock( m_queue_mutex );
 
 	if(filesToSave.size() > 0 )
 		saveCachedFiles( filesToSave );
-
 }
 
 
@@ -169,6 +214,7 @@ void FileDatabasePersistor::saveCachedFiles(const std::list<File*>& filesToSave)
 			{
 				try
 				{
+					//saveParentFolderOrGetId(**fiter);
 					saveFileMainDataAndGetDBId(**fiter);
 					saveTitle(**fiter );
 					saveAlbum(**fiter);
@@ -179,18 +225,14 @@ void FileDatabasePersistor::saveCachedFiles(const std::list<File*>& filesToSave)
 				}
 				catch( FilePersistenceError& error)
 				{
-#ifdef WITH_LOGGING
-			std::cout << "error saving file in db : " << error.getMessage() << std::endl;
-#endif
+					LOG(LOG_ERROR, "error saving file in db %s", error.getMessage().c_str() );
 				}
 			}
 			commitSave();
 	}
 	catch(FileDatabasePersistor::FilePersistenceError &error )
 	{
-#ifdef WITH_LOGGING
-			std::cout << "error saving file in db : " << error.getMessage() << std::endl;
-#endif
+			LOG(LOG_ERROR, "error saving file in db %s", error.getMessage().c_str() );
 			m_database.rollbackTransaction();
 			m_database.writeUnlock();
 	}
@@ -198,10 +240,13 @@ void FileDatabasePersistor::saveCachedFiles(const std::list<File*>& filesToSave)
 
 void FileDatabasePersistor::flush()
 {
-#ifdef WITH_LOGGING
-	std::cout << "flushing cached file for persistence found : " << m_queuedFiles.size() << " remaining file" << std::endl;
-#endif
+	LOG(LOG_DEBUG, "flushing cached file for persistence found %d remaining files " , m_queuedFiles.size() );
 	if( m_queuedFiles.size() > 0 )
 		saveCachedFiles(m_queuedFiles);
 }
+
+
+
+
+
 #endif /* FILE_DATABASE_PERSISTOR_CPP_ */

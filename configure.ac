@@ -28,6 +28,16 @@ PKG_CHECK_MODULES([GLIB], [glib-2.0],[],[echo "glib package required but not fou
 AC_SUBST(GLIB_CFLAGS)
 AC_SUBST(GLIB_LIBS)
 
+### check for glib
+PKG_CHECK_MODULES([GIO], [gio-2.0],[],[echo "gio package required but not found"; exit 1])
+AC_SUBST(GIO_CFLAGS)
+AC_SUBST(GIO_LIBS)
+
+### check for glib
+PKG_CHECK_MODULES([GLIB_THREADS], [gthread-2.0],[],[echo "glibtrhead package required but not found"; exit 1])
+AC_SUBST(GLIB_THREADS_CFLAGS)
+AC_SUBST(GLIB_THREADS_LIBS)
+
 ### check for icu
 PKG_CHECK_MODULES(ICU, [icu-i18n],[],[
 	AX_CHECK_ICU([4.4.2],[], [echo "libicu package required but not found"; exit 1])

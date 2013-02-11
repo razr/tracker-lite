@@ -2,7 +2,7 @@
  * file-metadata-extractor.h
  *
  *  Created on: Jan 30, 2013
- *      Author: ionut
+ *      Author: ionut.neicu@windriver.com
  */
 
 #ifndef FILE_METADATA_EXTRACTOR_H_

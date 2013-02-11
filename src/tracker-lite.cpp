@@ -1,10 +1,12 @@
 #include <glib.h>
+#include <gio/gio.h>
 #include <iostream>
 
 #include "file-metadata-extractor.h"
 #include "taglib-metadata-extractor.h"
 #include "device-manager.h"
-
+#include "logging.h"
+#include "console-logging.h"
 
 
 // emulate new device inserted
@@ -17,7 +19,6 @@ gboolean newDeviceAdded( gpointer ptr)
 int main( int argc, char * argv[])
 {
 	GMainLoop *loop = g_main_loop_new ( NULL , FALSE );
-
 
 	// initialize extractors
 	// we use one single extractor type for all audio types
@@ -37,10 +38,6 @@ int main( int argc, char * argv[])
 	MetadataExtractManager::getInstance().registerExtractor( "MP2",  &taglibExtractor);
 	MetadataExtractManager::getInstance().registerExtractor( "M4B",  &taglibExtractor);
 
-    // this method should called when usb stick inserted
-	// see Linux 'mount' or 'ls /media' for more details, usually the mount point differ
-	// we emulate this with hard-coded test values
-
 
 
     gchar * deviceId = NULL;
@@ -50,9 +47,8 @@ int main( int argc, char * argv[])
 
     GOptionEntry options[] =
     {
-        { "device-id",   'i', 0, G_OPTION_ARG_STRING, &deviceId, "deviceID ", NULL },
-        { "device-path", 'p', 0, G_OPTION_ARG_STRING, &devicePath, "devicePath ", NULL },
-
+        { "device-id",     'i', 0, G_OPTION_ARG_STRING, &deviceId, "deviceID ", NULL },
+        { "device-path",   'p', 0, G_OPTION_ARG_STRING, &devicePath, "devicePath ", NULL },
         { NULL }
     };
 
@@ -77,7 +73,21 @@ int main( int argc, char * argv[])
     	return -3;
     }
 
+    if(!g_thread_supported())
+    	g_thread_init (NULL);
+
+
+    g_type_init();
+
+    Logging::Logger::getInstance().setLogLevel( LOG_VERBOSE );
+    Logging::Logger::getInstance().addLoggerDelegate( LoggerDelegate( ConsoleLoggerMethod::getInstance() ) );
+
+
+    // this method should called when usb stick inserted
+	// see Linux 'mount' or 'ls /media' for more details, usually the mount point differ
+	// we emulate this with hard-coded test values
     DeviceManager::getInstance().handleDeviceInserted(deviceId, devicePath);
+
     //DeviceManager::getInstance().handleDeviceInserted("BDB4-A56F", "/media/BDB4-A56F");
 	/*
 	 *  optionally we can emulate other device inserted

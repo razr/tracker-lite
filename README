@@ -1,0 +1,13 @@
+#Ubuntu dev env setup:
+sudo apt-get install build-essential libglib2.0-dev libsqlite3-dev libtagc0-dev libicu-dev
+
+#build steps :
+
+run ./build.sh 
+or 
+autoreconf --force --install
+
+./configure
+
+./make
+

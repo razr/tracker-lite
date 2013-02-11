@@ -5,12 +5,13 @@
  *      Author: ionut
  */
 
-
+#include <glib.h>
 #include <sstream>
 #include <boost/bind.hpp>
 
 #include "device-manager.h"
 #include "database.h"
+#include "logging.h"
 
 DeviceManager DeviceManager::m_instance;
 
@@ -18,10 +19,6 @@ DeviceManager DeviceManager::m_instance;
 #define MAX_DEVICES_TO_KEEP_IN_HISTORY 4
 #endif
 
-#define WITH_LOGGING
-#ifdef WITH_LOGGING
-#include <iostream>
-#endif
 #define WITH_STATISTICS
 #ifdef WITH_STATISTICS
 #include "statistics.h"
@@ -32,8 +29,8 @@ DeviceManager::DeviceManager()
 {
 	m_deviceId = "";
 	m_devicePath = "";
-	m_fileSystemScanner.setOnFileFoundHandler(boost::bind(&ThreadPool::pushFile, &m_metadataExtractingPool, _1) );
-	m_fileSystemScanner.setOnFolderScanTerminated( boost::bind(&DeviceManager::fileSystemScanTerminated, this) );
+	m_fileSystemScanner.addObserver(this);
+	m_metadataExtractingPool.addObserver(this);
 	m_filePersistor = new FileDatabasePersistor(  m_database );
 }
 
@@ -51,7 +48,7 @@ void DeviceManager::handleDeviceInserted(const std::string& deviceId, const std:
 	try
 	{
 		m_fileSystemScanner.cancelScan();
-		m_metadataExtractingPool.terminate( ThreadPool::WAIT_ALL);
+		m_metadataExtractingPool.terminate( MetadataExtractPool::WAIT_ALL);
 		m_filePersistor->flush();
 		m_database.close();
 #ifdef __arm__
@@ -59,30 +56,54 @@ void DeviceManager::handleDeviceInserted(const std::string& deviceId, const std:
 #else
 		m_database.open( "tracker_db_" + deviceId);
 #endif
-		m_metadataExtractingPool.start( boost::bind( &FileDatabasePersistor::saveFile, m_filePersistor, _1) );
-		m_fileSystemScanner.startScanFolderRecursively( devicePath );
+
+		m_metadataExtractingPool.start();
+		m_fileSystemScanner.startScanFolder( devicePath );
 	}
-	catch( ThreadPool::Error& error )
+	catch( MetadataExtractPool::Error& error )
 	{
-		std::cerr << "Fatal Error : " << error.getMessage() << std::endl;
+		LOG(LOG_ERROR, "metadata extract error %s", error.getMessage().c_str() );
 	}
 	catch( Database::Error& error )
 	{
-		std::cerr << "Fatal Error : " << error.getMessage() << std::endl;
+		LOG(LOG_ERROR, "database error %s", error.getMessage().c_str() );
 	}
 }
 
-void DeviceManager::fileSystemScanTerminated(void)
+void DeviceManager::onFileFound( const std::string& fileName, bool isFolder, const std::string& parentFolder )
 {
-	std::cout << "FS terminated" << std::endl;
+	LOG(LOG_VERBOSE, "file = %s", fileName.c_str() );
+	if( parentFolder == m_devicePath )
+	{
+		if( ! isFolder )
+			m_metadataExtractingPool.pushFile( parentFolder + "/" + fileName );
+		else
+			m_fileSystemScanner.startScanFolder( parentFolder + "/" + fileName );
+	}
+
+
+}
+
+void DeviceManager::onFileMetadataExtracted( File * f)
+{
+	LOG(LOG_VERBOSE, "file = %s", f->m_stat.m_path.c_str() );
+	m_filePersistor->saveFile(f);
+}
+
+
+void DeviceManager::onScanTerminated(void)
+{
+	LOG(LOG_DEBUG, "%s", "scan terminated");
 #ifdef WITH_STATISTICS
 	Statistics::getInstance().fsScanFinished();
 #endif
-	m_metadataExtractingPool.terminate( ThreadPool::WAIT_ALL);
+	m_metadataExtractingPool.terminate( MetadataExtractPool::WAIT_ALL);
 	m_filePersistor->flush();
 #ifdef WITH_STATISTICS
 	Statistics::getInstance().metadataExtractFinished();
 	Statistics::getInstance().print();
 #endif
+	/* TODO remove */
+	exit(0);
 
 }

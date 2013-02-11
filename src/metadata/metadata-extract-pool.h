@@ -1,24 +1,30 @@
 /*
- * thread-pool.h
+ * metadata-extract-pool.h
  *
  *  Created on: Jan 30, 2013
- *      Author: ionut
+ *      Author: ionut.neicu@windriver.com
  */
 
-#ifndef THREAD_POOL_H_
-#define THREAD_POOL_H_
+#ifndef METADATA_EXTRACT_POOL_H_
+#define METADATA_EXTRACT_POOL_H_
 
-#include <pthread.h>
+#include <glib.h>
 #include <string>
-#include <queue>
-#include <boost/function.hpp>
+#include <list>
+
 
 #define THREAD_POOL_SIZE 8
 
 class File;
 
 
-typedef boost::function<void(File*)> FileMetadataExtractedFunctionType;
+class MetadataExtractPoolObserver
+{
+public:
+	virtual void onFileMetadataExtracted( File * f) = 0;
+};
+
+
 /**
  * @class ThreadPool
  * @brief ThreadPool used for metadata extraction
@@ -27,17 +33,15 @@ typedef boost::function<void(File*)> FileMetadataExtractedFunctionType;
  * When one thread finishes metadata extraction will call (m_onFileMetadataFunction) callback
  * that will usually insert metadata in database
  */
-class ThreadPool
+class MetadataExtractPool
 {
-	std::queue<std::string> m_queues[THREAD_POOL_SIZE]; //!< thread queues - will receive file paths
-	pthread_mutex_t         m_queueMutexes[ THREAD_POOL_SIZE]; //!< queue mutexes needed because queues are FIFOS across two threads
-	bool				    b_runThread[ THREAD_POOL_SIZE ]; //!< pool threads running flag. set to false to terminate
-	pthread_t 			    m_threads[ THREAD_POOL_SIZE ]; //!< threads object
-	bool					b_threadsStarted[ THREAD_POOL_SIZE ];
-	FileMetadataExtractedFunctionType m_onFileMetadataFunction; //!< callback to be called whrn metadata extracted
-	static void* threadFunction( void * arg ); //!< posix thread function
+
+	GThreadPool *			m_threadPool;
+	std::list<MetadataExtractPoolObserver *> m_observers;
+	static void threadFunction( gpointer arg, gpointer userData ); //!< glib thread function
 	void runThread(int threadId); //!<< object's thread method
 	void processFile( const std::string& filePath, int threadId ); //!< metadata extraction method
+
 public:
 	/**
 	 * @class ThreadPool error
@@ -53,13 +57,13 @@ public:
 
 			virtual std::string getMessage() const
 			{
-				return "ThreadPool error : " + m_message;
+				return "MetadataExtractPool error : " + m_message;
 			}
 		};
 	/**
 	 * @brief constructor
 	 */
-	ThreadPool();
+	MetadataExtractPool();
 
 	/**
 	 * @enum TerminateMode
@@ -72,7 +76,17 @@ public:
 	 * start thread pool
 	 * @param onFileMetadataExtractedFunc - callback to be called when file extracted
 	 */
-	void start( FileMetadataExtractedFunctionType onFileMetadataExtractedFunc);
+	void start() throw( MetadataExtractPool::Error);
+	/**
+	 * add observer to thread pool
+	 * @param observer
+	 */
+	void addObserver( MetadataExtractPoolObserver *observer );
+	/**
+	* remove observer to thread pool
+	* @param observer
+	*/
+	void removeObserver( MetadataExtractPoolObserver *observer );
 	/**
 	 * terminate thread pool
 	 * @param mode - mode to terminate @see TerminateMode
