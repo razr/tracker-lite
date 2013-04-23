@@ -1,100 +1,55 @@
-AC_INIT(trackerlite, 0.1, costel.grosu@windriver.com)
-AC_CONFIG_AUX_DIR([build-aux])
-AM_INIT_AUTOMAKE
+#                                               -*- Autoconf -*-
+# Process this file with autoconf to produce a configure script.
+
+AC_PREREQ([2.69])
+AC_INIT([tracker-lite], [0.1], [razr@github.com])
+AM_INIT_AUTOMAKE([foreign])
+LT_INIT([dlopen])
+
+AC_CONFIG_SRCDIR([src/server/tlite.c])
 AC_CONFIG_HEADERS([config.h])
+
 # Checks for programs.
 AC_PROG_CC
-AC_PROG_CXX
-AM_PROG_CC_C_O
+AC_PROG_INSTALL
 
-AC_CHECK_HEADERS([string.h]) 
+# Checks for libraries.
+PKG_CHECK_MODULES([GLIB], [glib-2.0])
+AC_SUBST([GLIB_CFLAGS])
+AC_SUBST([GLIB_LIBS])
 
-### check for boost signals library
-AX_BOOST_BASE([1.40])
-AX_BOOST_SIGNALS
+PKG_CHECK_MODULES([GTHREAD], [gthread-2.0])
+AC_SUBST([GTHREAD_CFLAGS])
+AC_SUBST([GTHREAD_LIBS])
 
-### check for taglib
-PKG_CHECK_MODULES([TAGLIB], [taglib],[],[echo "taglib package required but not found"; exit 1])
-AC_SUBST(TAGLIB_CFLAGS)
-AC_SUBST(TAGLIB_LIBS)
+PKG_CHECK_MODULES([GMODULE], [gmodule-2.0])
+AC_SUBST([GMODULE_CFLAGS])
+AC_SUBST([GMODULE_LIBS])
 
-### check for sqlite3
-PKG_CHECK_MODULES([SQLITE], [sqlite3],[],[echo "sqlite package required but not found"; exit 1])
-AC_SUBST(SQLITE_CFLAGS)
-AC_SUBST(SQLITE_LIBS)
-
-### check for glib
-PKG_CHECK_MODULES([GLIB], [glib-2.0],[],[echo "glib package required but not found"; exit 1])
-AC_SUBST(GLIB_CFLAGS)
-AC_SUBST(GLIB_LIBS)
-
-### check for glib
-PKG_CHECK_MODULES([GIO], [gio-2.0],[],[echo "gio package required but not found"; exit 1])
+PKG_CHECK_MODULES([GIO], [gio-2.0])
 AC_SUBST(GIO_CFLAGS)
 AC_SUBST(GIO_LIBS)
 
-### check for glib
-PKG_CHECK_MODULES([GLIB_THREADS], [gthread-2.0],[],[echo "glibtrhead package required but not found"; exit 1])
-AC_SUBST(GLIB_THREADS_CFLAGS)
-AC_SUBST(GLIB_THREADS_LIBS)
+PKG_CHECK_MODULES([GUDEV], [gudev-1.0])
+AC_SUBST(GUDEV_CFLAGS)
+AC_SUBST(GUDEV_LIBS)
 
-### check for icu
-PKG_CHECK_MODULES(ICU, [icu-i18n],[],[
-	AX_CHECK_ICU([4.4.2],[], [echo "libicu package required but not found"; exit 1])
-	])
-AC_SUBST(ICU_CFLAGS)
-AC_SUBST(ICU_LIBS)
+PKG_CHECK_MODULES([SQLITE3], [sqlite3])
+AC_SUBST(SQLITE3_CFLAGS)
+AC_SUBST(SQLITE3_LIBS)
 
+# Checks for header files.
 
+# Checks for typedefs, structures, and compiler characteristics.
 
-#PKG_CHECK_MODULES([GST_INTERFACES], [gstreamer-interfaces-0.10 >= 0.10])
-#AC_SUBST(GST_INTERFACES_CFLAGS)
-#AC_SUBST(GST_INTERFACES_LIBS)
+# Checks for library functions.
 
-#PKG_CHECK_MODULES([GST_APP], [gstreamer-app-0.10 >= 0.10])
-#AC_SUBST(GST_APP_CFLAGS)
-#AC_SUBST(GST_APP_LIBS)
-
-#GST_REQUIRED=0.10.10
-#PKG_CHECK_MODULES(GSTREAMER, [
-#    gstreamer-0.10              >= $GST_REQUIRED
-#    gstreamer-base-0.10         >= $GST_REQUIRED
-#    gstreamer-interfaces-0.10   >= $GST_REQUIRED
-#    gstreamer-pbutils-0.10      >= $GST_REQUIRED
-#  ], [
-#    AC_SUBST(GSTREAMER_CFLAGS)
-#    AC_SUBST(GSTREAMER_LIBS)
-#  ], [
-#    AC_MSG_ERROR([
-#    "Can't find the following GStreamer development packages:
-
-#      gstreamer-0.10              >= $GST_REQUIRED
-#      gstreamer-base-0.10         >= $GST_REQUIRED
-#      gstreamer-interfaces-0.10   >= $GST_REQUIRED
-#      gstreamer-pbutils-0.10      >= $GST_REQUIRED
-
-#     Please make sure you have the necessary GStreamer-0.10
-#     development headers installed."])
-#])
-
-
-### check for systemd watchdog support
-#PKG_CHECK_MODULES(SYSTEMD, [ libsystemd-daemon >= 42 ], watchdog="yes", watchdog="no")
-#if test "x$watchdog" = "xyes"; then
-#    AC_DEFINE(BUILD_WITH_WATCHDOG, [], [Build watchdog support if systemd v42 or greater])
-#    AC_SUBST(SYSTEMD_CFLAGS)
-#    AC_SUBST(SYSTEMD_LIBS)
-#fi
-
-SUBDIRS = src
-AC_ARG_ENABLE([debug],
-              AC_HELP_STRING([--enable-debug], [this option enable debug compile option]),
-              [], [CFLAGS="-g -O0";CXXFLAGS="-g -O0"])
-
-AC_CONFIG_FILES([
-                Makefile   
-                            
-        ])
+AC_CONFIG_FILES([Makefile
+                 src/Makefile
+                 src/ce-device-manager/Makefile
+                 src/crawlers/Makefile
+                 src/crawlers/lib/Makefile
+                 src/miners/Makefile
+                 src/miners/lib/Makefile
+                 src/server/Makefile])
 AC_OUTPUT
-
-
