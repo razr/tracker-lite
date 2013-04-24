@@ -56,7 +56,7 @@ struct _TLiteMinerPrivate {
 
 	gchar *name;
 	gchar *status;
-	gdouble progress;
+	gint progress;
 	gint remaining_time;
 };
 

@@ -78,6 +78,7 @@ typedef struct {
 GType                    tlite_miner_get_type            (void) G_GNUC_CONST;
 GQuark                   tlite_miner_error_quark         (void);
 
+// TLiteMiner				*tlite_miner_new      			 (void);
 void                     tlite_miner_start               (TLiteMiner         *miner);
 void                     tlite_miner_stop                (TLiteMiner         *miner);
 

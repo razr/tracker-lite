@@ -111,7 +111,7 @@ tlite_ce_device_manager_class_init (TLiteCeDeviceManagerClass *klass)
 		              G_TYPE_STRING);
 
 	signals [INDEXING_FINISHED] =
-		g_signal_new ("miner-deactivated",
+		g_signal_new ("indexing-finished",
 		              G_OBJECT_CLASS_TYPE (object_class),
 		              G_SIGNAL_RUN_LAST,
 		              G_STRUCT_OFFSET (TLiteCeDeviceManagerClass, indexing_finished),
@@ -162,6 +162,7 @@ ce_device_manager_found_cb (TLiteCrawler *crawler)
 	/* media content found, create device and add it to the list */
 	device = tlite_ce_device_new (mount);
 
+	/* create miner and assign crawler to it */
 	g_printf ("%s\n",__FUNCTION__);
 
 }
@@ -195,9 +196,9 @@ ce_device_manager_mount_added_cb (GVolumeMonitor *volume_monitor,
 	g_signal_connect_object (crawler, "finished",
 	                  G_CALLBACK (ce_device_manager_finished_cb), manager, 0);
 
+	/* TODO: replace mount with a usb id, probably with something even more generic */
 	tlite_crawler_start(crawler, mount);
 
-	/* TODO: create device put it in the list and pass it to scanner */
 }
 
 static void

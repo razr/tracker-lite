@@ -28,15 +28,14 @@ struct TLiteCrawlerPrivate {
 	guint           idle_id;
 	GMount   	   *mount;
 
-	/* Status */
-	gboolean        is_running;
-	gboolean        is_finished;
-	gboolean        is_paused;
-	gboolean        was_started;
+	/* Statistics */
+	gint        scanned_files;
+	gint        scanned_dirs;
 };
 
 enum {
 	FOUND,
+	PROCESSED,
 	FINISHED,
 	LAST_SIGNAL
 };
@@ -62,6 +61,14 @@ tlite_crawler_class_init (TLiteCrawlerClass *klass)
 
 	signals[FOUND] =
 		g_signal_new ("found",
+		              G_TYPE_FROM_CLASS (klass),
+		              G_SIGNAL_RUN_LAST,
+		              G_STRUCT_OFFSET (TLiteCrawlerClass, found),
+		              NULL, NULL,
+		              g_cclosure_marshal_VOID__VOID,
+		              G_TYPE_NONE, 0);
+	signals[PROCESSED] =
+		g_signal_new ("processed",
 		              G_TYPE_FROM_CLASS (klass),
 		              G_SIGNAL_RUN_LAST,
 		              G_STRUCT_OFFSET (TLiteCrawlerClass, found),
@@ -99,26 +106,74 @@ tlite_crawler_new (void)
 	return crawler;
 }
 
+static gboolean
+scan_dir (TLiteCrawler *crawler, GFile *dir)
+{
+	GFileEnumerator		*enumerator;
+	GError				*error;
+	GFileInfo			*info;
+	GFileType			type; 
+	const char			*name;
+	static gboolean     found = FALSE;
+
+	/* TODO: shall be cancellable */
+	enumerator =  g_file_enumerate_children (dir,
+											 G_FILE_ATTRIBUTE_STANDARD_TYPE,
+											 G_FILE_QUERY_INFO_NOFOLLOW_SYMLINKS,
+		                                     NULL,
+		                                     &error);
+	g_object_unref (dir);
+
+	if (error != NULL) {
+		g_error ("could not enumerate folder content : %s", error->message );
+		g_signal_emit (crawler, signals[FINISHED], 0);
+		return TRUE;
+	}
+
+	while ((info = g_file_enumerator_next_file (enumerator, NULL, NULL)) != NULL) {
+
+		type = g_file_info_get_file_type (info);
+		name = g_file_info_get_name (info);
+
+		switch (type) {
+			case G_FILE_TYPE_DIRECTORY:
+				/* scan new folder - recurse */
+				scan_dir (crawler, g_file_enumerator_get_child (enumerator, info));
+				break;
+
+			case G_FILE_TYPE_REGULAR:
+				/* add to the list of miner */
+				/* TODO: shall be a limit on the amount of files */
+
+				if (!found) {
+					g_signal_emit (crawler, signals[FOUND], 0);
+					found = TRUE;
+				}
+				break;
+
+			default:
+				break;
+		}
+		g_object_unref (info);
+	}
+
+	g_file_enumerator_close (enumerator, NULL, &error);
+	g_object_unref (enumerator);
+
+	return FALSE;
+}
 
 static gboolean
 process_func (gpointer data)
 {
-	TLiteCrawler          *crawler;
-	TLiteCrawlerPrivate   *priv;
+	TLiteCrawler      	*crawler;
+	TLiteCrawlerPrivate	*priv;
 
 	crawler = TLITE_CRAWLER (data);
 	priv = TLITE_CRAWLER_GET_PRIVATE (crawler);
 
-	/* TODO: at the moment we consider all inserted devices are with media content */
-	g_signal_emit (crawler, signals[FOUND], 0);
+	scan_dir (crawler, g_mount_get_default_location (priv->mount));
 
-/*	file = 
-	GFileEnumerator * enumerator =  g_file_enumerate_children( file,
-														G_FILE_ATTRIBUTE_STANDARD_TYPE,
-														G_FILE_QUERY_INFO_NOFOLLOW_SYMLINKS,
-		                                                NULL,
-		                                                &error);
-*/
 	g_signal_emit (crawler, signals[FINISHED], 0);
 
 	return FALSE;
@@ -127,10 +182,6 @@ process_func (gpointer data)
 static gboolean
 process_func_start (TLiteCrawler *crawler)
 {
-	if (crawler->priv->is_finished) {
-		return FALSE;
-	}
-
 	if (crawler->priv->idle_id == 0) {
 		crawler->priv->idle_id = g_idle_add (process_func, crawler);
 	}
