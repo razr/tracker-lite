@@ -138,13 +138,14 @@ scan_dir (TLiteCrawler *crawler, GFile *dir)
 		switch (type) {
 			case G_FILE_TYPE_DIRECTORY:
 				/* scan new folder - recurse */
+				scanned_dirs++;
 				scan_dir (crawler, g_file_enumerator_get_child (enumerator, info));
 				break;
 
 			case G_FILE_TYPE_REGULAR:
 				/* add to the list of miner */
 				/* TODO: shall be a limit on the amount of files */
-
+				scanned_files++;
 				if (!found) {
 					g_signal_emit (crawler, signals[FOUND], 0);
 					found = TRUE;
