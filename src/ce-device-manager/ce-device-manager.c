@@ -16,8 +16,10 @@ struct _TLiteCeDeviceManagerPrivate {
 	GList *miners;			/* available miners */
 	GList *crawlers;		/* available crawlers */
 
+	/* subsystems */
 	GVolumeMonitor *volume_monitor; /* valid only for the mounted devices */
 	GUdevClient *udev_client;		/* more generic, not used currently */
+	GDataInputStream *input_stream; /* for testing */
 
 	/* Property values */
 	gboolean auto_start;
@@ -211,6 +213,50 @@ ce_device_manager_mount_removed_cb (GVolumeMonitor *volume_monitor,
 	/* TODO: remove devices from the list */
 }
 
+static void ce_device_manager_read_line_cb(GObject *src,
+                                           GAsyncResult *res,
+                                           gpointer data)
+{
+	char *s, **ss;
+    GError *error = NULL;
+	gsize len;
+	TLiteCeDeviceManager *manager = data;
+	TLiteCeDeviceManagerPrivate *priv;
+
+	priv = TLITE_CE_DEVICE_MANAGER_GET_PRIVATE (manager);
+
+	s = g_data_input_stream_read_line_finish(G_DATA_INPUT_STREAM(src), res,
+                                             &len, &error);
+	/* two commands supported */
+	ss = g_strsplit (s, " ", 0);
+
+	g_printf ("%s:%s\n",ss[0], ss[1]);
+
+	if (0 == g_strcmp0 ("mount-added", ss[0])) {
+		GFile *file;
+		GMount *mount;
+		TLiteCrawler *crawler;
+
+		file = g_file_new_for_path (ss[1]);
+		mount = g_file_find_enclosing_mount (file, NULL, &error);
+
+		/* start crawler and wait for signal */
+		crawler = tlite_crawler_new();
+		priv->crawlers = g_list_append (priv->crawlers, crawler);
+
+		g_signal_connect_object (crawler, "found",
+					             G_CALLBACK (ce_device_manager_found_cb), manager, 0);
+		g_signal_connect_object (crawler, "finished",
+	              				 G_CALLBACK (ce_device_manager_finished_cb), manager, 0);
+
+		/* TODO: replace mount with a usb id, probably with something even more generic */
+		tlite_crawler_start(crawler, mount);
+	}
+
+	g_free(s);
+	g_strfreev(ss);
+}
+
 static gboolean
 ce_device_manager_initable_init (GInitable     *initable,
                                  GCancellable  *cancellable,
@@ -236,6 +282,11 @@ ce_device_manager_initable_init (GInitable     *initable,
 	g_signal_connect_object (priv->volume_monitor, "mount-removed",
 	                         G_CALLBACK (ce_device_manager_mount_removed_cb), manager, 0);
 
+	/* for mountable devices, like USB sticks */
+	priv->input_stream = G_INPUT_STREAM (g_data_input_stream_new (g_unix_input_stream_new(STDIN_FILENO, FALSE)));
+	g_data_input_stream_read_line_async(priv->input_stream, G_PRIORITY_DEFAULT, NULL,
+                                       ce_device_manager_read_line_cb, manager);
+	
 	return TRUE;
 }
 
