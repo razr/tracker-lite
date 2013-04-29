@@ -3,6 +3,7 @@
 #endif
 
 #include <gio/gio.h>
+#include <gio/gunixinputstream.h>
 #include <gudev/gudev.h>
 
 #include "tlite-crawler-object.h"
@@ -282,8 +283,8 @@ ce_device_manager_initable_init (GInitable     *initable,
 	g_signal_connect_object (priv->volume_monitor, "mount-removed",
 	                         G_CALLBACK (ce_device_manager_mount_removed_cb), manager, 0);
 
-	/* for mountable devices, like USB sticks */
-	priv->input_stream = G_INPUT_STREAM (g_data_input_stream_new (g_unix_input_stream_new(STDIN_FILENO, FALSE)));
+	/* for testing */
+	priv->input_stream = g_data_input_stream_new (g_unix_input_stream_new (STDIN_FILENO, TRUE));
 	g_data_input_stream_read_line_async(priv->input_stream, G_PRIORITY_DEFAULT, NULL,
                                        ce_device_manager_read_line_cb, manager);
 	
