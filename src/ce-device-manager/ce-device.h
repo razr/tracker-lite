@@ -33,9 +33,10 @@ GType                tlite_ce_device_get_type           (void) G_GNUC_CONST;
 GQuark               tlite_ce_device_error_quark        (void) G_GNUC_CONST;
 
 TLiteCeDevice *tlite_ce_device_new          (GMount *mount);
-char *   tlite_ce_device_get_name           (TLiteCeDevice              *device);
-gboolean tlite_ce_device_is_indexed         (TLiteCeDevice              *device);
-void tlite_ce_device_indexed     	        (TLiteCeDevice              *device);
+gboolean tlite_ce_device_add_db				(TLiteCeDevice	*device);
+char *   tlite_ce_device_get_name           (TLiteCeDevice  *device);
+gboolean tlite_ce_device_is_indexed         (TLiteCeDevice  *device);
+void tlite_ce_device_indexed     	        (TLiteCeDevice  *device);
 
 G_END_DECLS
 

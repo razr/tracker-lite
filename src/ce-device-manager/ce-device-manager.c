@@ -240,6 +240,8 @@ static void ce_device_manager_read_line_cb(GObject *src,
 
 		file = g_file_new_for_path (ss[1]);
 		mount = g_file_find_enclosing_mount (file, NULL, &error);
+		if (mount == NULL)
+			g_printf ("%s\n", error->message);
 
 		/* start crawler and wait for signal */
 		crawler = tlite_crawler_new();

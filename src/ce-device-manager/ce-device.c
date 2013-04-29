@@ -10,8 +10,10 @@
 #define TLITE_CE_DEVICE_GET_PRIVATE(o) (G_TYPE_INSTANCE_GET_PRIVATE ((o), TLITE_TYPE_CE_DEVICE, TLiteCeDevicePrivate))
 
 struct _TLiteCeDevicePrivate {
-	gchar   *name;
-	sqlite3 *database;
+	GMount	  *mount;
+
+	gchar	   *name;
+	sqlite3	   *database;
 };
 
 static void ce_device_initable_iface_init (GInitableIface *iface);
@@ -95,36 +97,51 @@ ce_device_initable_iface_init (GInitableIface *iface)
 TLiteCeDevice *
 tlite_ce_device_new (GMount *mount)
 {
-	int result;
-	GError *inner_error = NULL;
+	GError *error = NULL;
 	TLiteCeDevice *device;
 	TLiteCeDevicePrivate *priv;
 	GFile *file;
-	char *name;
 
 	g_return_val_if_fail (G_IS_MOUNT (mount), FALSE);
 
 	device = g_initable_new (TLITE_TYPE_CE_DEVICE,
 	                          NULL,
-	                          &inner_error,
+	                          &error,
 	                          NULL);
 	if (!device) {
 		g_critical ("Couldn't create new TLiteCeDevice: '%s'",
-		            inner_error ? inner_error->message : "unknown error");
-		g_clear_error (&inner_error);
+		            error ? error->message : "unknown error");
+		g_clear_error (&error);
+		return NULL;
 	}
 
 	priv = TLITE_CE_DEVICE_GET_PRIVATE (device);
 
-	file = g_mount_get_default_location(mount);
-	name = g_file_get_parse_name (file);
-	g_printf ("%s\n", name);
+	priv->mount = mount;
+
+	file = g_mount_get_default_location(priv->mount);
+	priv->name = g_file_get_parse_name (file);
+	g_printf ("%s\n", priv->name);
+
+	return device;
+}
+
+gboolean
+tlite_ce_device_add_db (TLiteCeDevice *device)
+{
+	TLiteCeDevicePrivate *priv;
+	int result;
+
+	g_return_val_if_fail (TLITE_IS_CE_DEVICE (device), FALSE);
+
+	priv = TLITE_CE_DEVICE_GET_PRIVATE (device);
 
 	/* create DB */
 	result = sqlite3_open ("aaaa", &priv->database);
 	if (result != SQLITE_OK) {
-		g_critical ("Couldn't create database: '%s'", name);
+		g_critical ("Couldn't create database: '%s'", priv->name);
+		return FALSE;
 	}
 
-	return device;
+	return TRUE;
 }
