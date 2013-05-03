@@ -83,8 +83,8 @@ tlite_crawler_class_init (TLiteCrawlerClass *klass)
 		              G_SIGNAL_RUN_LAST,
 		              G_STRUCT_OFFSET (TLiteCrawlerClass, finished),
 		              NULL, NULL,
-		              g_cclosure_marshal_VOID__VOID,
-		              G_TYPE_NONE, 0);
+		              g_cclosure_marshal_VOID__INT,
+		              G_TYPE_NONE, 1, G_TYPE_INT);
 
 	g_type_class_add_private (object_class, sizeof (TLiteCrawlerPrivate));
 
@@ -132,7 +132,7 @@ scan_dir (TLiteCrawler *crawler, GFile *dir)
 
 	if (error != NULL) {
 		g_error ("could not enumerate folder content : %s", error->message );
-		g_signal_emit (crawler, signals[FINISHED], 0);
+		g_signal_emit (crawler, signals[FINISHED], 0, crawler->priv->scanned_files);
 		return NULL;
 	}
 
@@ -197,7 +197,7 @@ process_func (gpointer data)
 		g_signal_emit (crawler, signals[SCANNED], 0, scanned);
 	}
 
-	g_signal_emit (crawler, signals[FINISHED], 0);
+	g_signal_emit (crawler, signals[FINISHED], 0, priv->scanned_files);
 
 	g_printf ("dirs = %d files = %d\n",priv->scanned_dirs, priv->scanned_files);
 	return FALSE;

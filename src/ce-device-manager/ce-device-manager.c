@@ -129,6 +129,7 @@ ce_device_manager_found_cb (TLiteCrawler *crawler,
 	TLiteMiner *miner;
 
 	g_printf ("%s\n",__FUNCTION__);
+	g_signal_emit (manager, signals[CE_DEVICE_ADDED], 0);
 
 	priv = TLITE_CE_DEVICE_MANAGER_GET_PRIVATE (manager);
 
@@ -142,9 +143,11 @@ ce_device_manager_found_cb (TLiteCrawler *crawler,
 
 
 static void
-ce_device_manager_finished_cb (TLiteCrawler *crawler)
+ce_device_manager_finished_cb (TLiteCrawler *crawler,
+                               gint scanned_files,
+                               TLiteCeDeviceManager *manager)
 {
-	g_printf ("%s\n",__FUNCTION__);
+	g_printf ("%s %d\n",__FUNCTION__, scanned_files);
 }
 
 static void
