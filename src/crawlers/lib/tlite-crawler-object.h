@@ -47,7 +47,7 @@ struct TLiteCrawlerClass {
 	GObjectClass parent;
 
 	void     (* found)                    (TLiteCrawler *crawler);
-	void     (* processed)                (TLiteCrawler *crawler);
+	void     (* scanned)                  (TLiteCrawler *crawler);
 	void     (* finished)                 (TLiteCrawler *crawler);
 };
 

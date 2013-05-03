@@ -6,6 +6,7 @@
 
 #include "tlite-subsystem-object.h"
 #include "tlite-crawler-object.h"
+#include "tlite-miner-object.h"
 #include "ce-device.h"
 #include "ce-device-manager.h"
 
@@ -125,13 +126,18 @@ ce_device_manager_found_cb (TLiteCrawler *crawler,
 {
 	TLiteCeDeviceManagerPrivate *priv;
 	TLiteCeDevice *device;
+	TLiteMiner *miner;
+
+	g_printf ("%s\n",__FUNCTION__);
 
 	priv = TLITE_CE_DEVICE_MANAGER_GET_PRIVATE (manager);
-	device = tlite_crawler_get_device (crawler);
 
-	/* create miner and assign crawler to it */
-	g_printf ("%s\n",__FUNCTION__);
+	device = tlite_crawler_get_device (crawler);
 	priv->devices = g_list_append (priv->devices, device);
+
+	miner = tlite_miner_new ();
+	priv->miners = g_list_append (priv->miners, miner);
+	tlite_miner_start (miner, crawler);
 }
 
 

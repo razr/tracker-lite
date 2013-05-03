@@ -22,6 +22,8 @@
 
 #include <glib-object.h>
 
+#include "tlite-crawler-object.h"
+
 G_BEGIN_DECLS
 
 #define TLITE_TYPE_MINER         (tlite_miner_get_type())
@@ -37,28 +39,12 @@ G_BEGIN_DECLS
 typedef struct _TLiteMiner TLiteMiner;
 typedef struct _TLiteMinerPrivate TLiteMinerPrivate;
 
-/**
- * TLiteMiner:
- *
- * Abstract miner object.
- **/
 struct _TLiteMiner {
 	GObject parent_instance;
+
 	TLiteMinerPrivate *priv;
 };
 
-/**
- * TLiteMinerClass:
- * @parent_class: parent object class.
- * @started: Called when the miner is told to start collecting data.
- * @stopped: Called when the miner is told to stop collecting data.
- * @paused: Called when the miner is told to pause.
- * @resumed: Called when the miner is told to resume activity.
- * @progress: progress.
- * @ignore_next_update: Called after ignore on next update event happens.
- *
- * Virtual methods left to implement.
- **/
 typedef struct {
 	GObjectClass parent_class;
 
@@ -78,8 +64,10 @@ typedef struct {
 GType                    tlite_miner_get_type            (void) G_GNUC_CONST;
 GQuark                   tlite_miner_error_quark         (void);
 
-// TLiteMiner				*tlite_miner_new      			 (void);
-void                     tlite_miner_start               (TLiteMiner         *miner);
+TLiteMiner				*tlite_miner_new      			 (void);
+
+void                     tlite_miner_start               (TLiteMiner         *miner,
+                                                          TLiteCrawler		 *crawler);
 void                     tlite_miner_stop                (TLiteMiner         *miner);
 
 gboolean                 tlite_miner_is_started          (TLiteMiner         *miner);

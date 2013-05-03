@@ -37,7 +37,7 @@ struct TLiteCrawlerPrivate {
 
 enum {
 	FOUND,
-	PROCESSED,
+	SCANNED,
 	FINISHED,
 	LAST_SIGNAL
 };
@@ -69,14 +69,14 @@ tlite_crawler_class_init (TLiteCrawlerClass *klass)
 		              NULL, NULL,
 		              g_cclosure_marshal_VOID__VOID,
 		              G_TYPE_NONE, 0);
-	signals[PROCESSED] =
-		g_signal_new ("processed",
+	signals[SCANNED] =
+		g_signal_new ("scanned",
 		              G_TYPE_FROM_CLASS (klass),
 		              G_SIGNAL_RUN_LAST,
-		              G_STRUCT_OFFSET (TLiteCrawlerClass, processed),
+		              G_STRUCT_OFFSET (TLiteCrawlerClass, scanned),
 		              NULL, NULL,
-		              g_cclosure_marshal_VOID__VOID,
-		              G_TYPE_NONE, 0);
+		              g_cclosure_marshal_VOID__POINTER,
+		              G_TYPE_NONE, 1, G_TYPE_POINTER);
 	signals[FINISHED] =
 		g_signal_new ("finished",
 		              G_TYPE_FROM_CLASS (klass),
@@ -110,14 +110,14 @@ tlite_crawler_new (void)
 	return crawler;
 }
 
-static gboolean
+static GList *
 scan_dir (TLiteCrawler *crawler, GFile *dir)
 {
 	GFileEnumerator		*enumerator;
 	GError				*error = NULL;
 	GFileInfo			*info;
 	GFileType			type; 
-	const char			*name;
+	GList				*files = NULL;
 	static gboolean     found = FALSE;
 
 	g_printf ("%s\n", g_file_get_path (dir));
@@ -133,31 +133,39 @@ scan_dir (TLiteCrawler *crawler, GFile *dir)
 	if (error != NULL) {
 		g_error ("could not enumerate folder content : %s", error->message );
 		g_signal_emit (crawler, signals[FINISHED], 0);
-		return TRUE;
+		return NULL;
 	}
 
 	while ((info = g_file_enumerator_next_file (enumerator, NULL, NULL)) != NULL) {
 
 		type = g_file_info_get_file_type (info);
-		name = g_file_info_get_name (info);
 
 		switch (type) {
 			case G_FILE_TYPE_DIRECTORY:
+			{
+				GList	*scanned;
 				/* scan new folder - recurse */
 				crawler->priv->scanned_dirs++;
-				scan_dir (crawler, g_file_enumerator_get_child (enumerator, info));
+				scanned = scan_dir (crawler, g_file_enumerator_get_child (enumerator, info));
+				if (scanned != NULL) {
+					g_signal_emit (crawler, signals[SCANNED], 0, scanned);
+				}
 				break;
-
+			}
 			case G_FILE_TYPE_REGULAR:
-				/* add to the list of miner */
+			{
+				GFile *file;
+
 				/* TODO: shall be a limit on the amount of files */
 				crawler->priv->scanned_files++;
 				if (!found) {
 					g_signal_emit (crawler, signals[FOUND], 0);
 					found = TRUE;
 				}
+				file = g_file_get_child (dir, g_file_info_get_name (info));
+				files = g_list_append (files, file);
 				break;
-
+			}
 			default:
 				break;
 		}
@@ -167,7 +175,7 @@ scan_dir (TLiteCrawler *crawler, GFile *dir)
 	g_file_enumerator_close (enumerator, NULL, &error);
 	g_object_unref (enumerator);
 
-	return FALSE;
+	return files;
 }
 
 static gboolean
@@ -176,13 +184,18 @@ process_func (gpointer data)
 	TLiteCrawler      	*crawler;
 	TLiteCrawlerPrivate	*priv;
 	GFile *file;
+	GList	*scanned;
 
 	g_printf ("%s\n",__FUNCTION__);
 	crawler = TLITE_CRAWLER (data);
 	priv = TLITE_CRAWLER_GET_PRIVATE (crawler);
 
 	file = tlite_ce_device_get_file (priv->device);
-	scan_dir (crawler, file);
+	scanned = scan_dir (crawler, file);
+
+	if (scanned != NULL) {
+		g_signal_emit (crawler, signals[SCANNED], 0, scanned);
+	}
 
 	g_signal_emit (crawler, signals[FINISHED], 0);
 

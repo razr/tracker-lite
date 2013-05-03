@@ -19,32 +19,10 @@
 
 #include "config.h"
 
-#include <gio/gio.h>
+#include <glib.h>
 
 #include "tlite-miner-object.h"
-
-#ifdef MINER_STATUS_ENABLE_TRACE
-#warning Miner status traces are enabled
-#define trace(message, ...) g_debug (message, ##__VA_ARGS__)
-#else
-#define trace(...)
-#endif /* MINER_STATUS_ENABLE_TRACE */
-
-/**
- * SECTION:tracker-miner-object
- * @short_description: Abstract base class for data miners
- * @include: libtracker-miner/tracker-miner.h
- *
- * #TrackerMiner is an abstract base class to help developing data miners
- * for tracker-store, being an abstract class it doesn't do much by itself,
- * but provides the basic signaling and operation control so the miners
- * implementing this class are properly recognized by Tracker, and can be
- * controlled properly by external means such as #TrackerMinerManager.
- *
- * #TrackerMiner implements the #GInitable interface, and thus, all objects of
- * types inheriting from #TrackerMiner must be initialized with g_initable_init()
- * just after creation (or directly created with g_initable_new()).
- **/
+#include "tlite-crawler-object.h"
 
 #define TLITE_MINER_GET_PRIVATE(o) (G_TYPE_INSTANCE_GET_PRIVATE ((o), TLITE_TYPE_MINER, TLiteMinerPrivate))
 
@@ -85,9 +63,13 @@ static gboolean   miner_initable_init          (GInitable              *initable
                                                 GCancellable           *cancellable,
                                                 GError                **error);
 
+/* 
 G_DEFINE_ABSTRACT_TYPE_WITH_CODE (TLiteMiner, tlite_miner, G_TYPE_OBJECT,
                                   G_IMPLEMENT_INTERFACE (G_TYPE_INITABLE,
                                                          miner_initable_iface_init));
+*/
+
+G_DEFINE_TYPE (TLiteMiner, tlite_miner, G_TYPE_OBJECT)
 
 static void
 tlite_miner_class_init (TLiteMinerClass *klass)
@@ -178,6 +160,7 @@ static void
 tlite_miner_init (TLiteMiner *miner)
 {
 	miner->priv = TLITE_MINER_GET_PRIVATE (miner);
+	miner->priv->started = FALSE;
 }
 
 
@@ -188,13 +171,35 @@ tlite_miner_error_quark (void)
 }
 
 
+static void
+miner_scanned_cb (TLiteCrawler *crawler,
+				  GList *files,
+                  TLiteMiner *miner)
+{
+	g_printf ("%s\n", __FUNCTION__);
+}
+
+static void
+miner_finished_cb (TLiteCrawler *crawler,
+                  TLiteMiner *miner)
+{
+	g_printf ("%s\n", __FUNCTION__);
+}
+
 void
-tlite_miner_start (TLiteMiner *miner)
+tlite_miner_start (TLiteMiner *miner,
+                   TLiteCrawler *crawler)
 {
 	g_return_if_fail (TLITE_IS_MINER (miner));
 	g_return_if_fail (miner->priv->started == FALSE);
+	g_return_if_fail (TLITE_IS_CRAWLER (crawler));
 
 	miner->priv->started = TRUE;
+
+	g_signal_connect_object (crawler, "scanned",
+					             G_CALLBACK (miner_scanned_cb), miner, 0);
+	g_signal_connect_object (crawler, "finished",
+	              				 G_CALLBACK (miner_finished_cb), miner, 0);
 
 	g_signal_emit (miner, signals[STARTED], 0);
 }
@@ -267,4 +272,15 @@ miner_finalize (GObject *object)
 	g_free (miner->priv->name);
 
 	G_OBJECT_CLASS (tlite_miner_parent_class)->finalize (object);
+}
+
+
+TLiteMiner *
+tlite_miner_new (void)
+{
+	TLiteMiner *miner;
+
+	miner = g_object_new (TLITE_TYPE_MINER, NULL);
+
+	return miner;
 }
