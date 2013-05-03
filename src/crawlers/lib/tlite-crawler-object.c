@@ -24,9 +24,11 @@
 #define TLITE_CRAWLER_GET_PRIVATE(obj) (G_TYPE_INSTANCE_GET_PRIVATE ((obj), TLITE_TYPE_CRAWLER, TLiteCrawlerPrivate))
 
 struct TLiteCrawlerPrivate {
+
+	TLiteCeDevice *device;
+		
 	/* Idle handler for processing found data */
 	guint           idle_id;
-	GMount   	   *mount;
 
 	/* Statistics */
 	gint        scanned_files;
@@ -71,7 +73,7 @@ tlite_crawler_class_init (TLiteCrawlerClass *klass)
 		g_signal_new ("processed",
 		              G_TYPE_FROM_CLASS (klass),
 		              G_SIGNAL_RUN_LAST,
-		              G_STRUCT_OFFSET (TLiteCrawlerClass, found),
+		              G_STRUCT_OFFSET (TLiteCrawlerClass, processed),
 		              NULL, NULL,
 		              g_cclosure_marshal_VOID__VOID,
 		              G_TYPE_NONE, 0);
@@ -93,6 +95,8 @@ static void
 tlite_crawler_init (TLiteCrawler *crawler)
 {
 	crawler->priv = TLITE_CRAWLER_GET_PRIVATE (crawler);
+	crawler->priv->scanned_files = 0;
+	crawler->priv->scanned_dirs = 0;
 }
 
 
@@ -110,11 +114,13 @@ static gboolean
 scan_dir (TLiteCrawler *crawler, GFile *dir)
 {
 	GFileEnumerator		*enumerator;
-	GError				*error;
+	GError				*error = NULL;
 	GFileInfo			*info;
 	GFileType			type; 
 	const char			*name;
 	static gboolean     found = FALSE;
+
+	g_printf ("%s\n", g_file_get_path (dir));
 
 	/* TODO: shall be cancellable */
 	enumerator =  g_file_enumerate_children (dir,
@@ -169,14 +175,18 @@ process_func (gpointer data)
 {
 	TLiteCrawler      	*crawler;
 	TLiteCrawlerPrivate	*priv;
+	GFile *file;
 
+	g_printf ("%s\n",__FUNCTION__);
 	crawler = TLITE_CRAWLER (data);
 	priv = TLITE_CRAWLER_GET_PRIVATE (crawler);
 
-	scan_dir (crawler, g_mount_get_default_location (priv->mount));
+	file = tlite_ce_device_get_file (priv->device);
+	scan_dir (crawler, file);
 
 	g_signal_emit (crawler, signals[FINISHED], 0);
 
+	g_printf ("dirs = %d files = %d\n",priv->scanned_dirs, priv->scanned_files);
 	return FALSE;
 }
 
@@ -193,28 +203,27 @@ process_func_start (TLiteCrawler *crawler)
 
 gboolean
 tlite_crawler_start (TLiteCrawler *crawler,
-                     GMount       *mount)
+                     TLiteCeDevice *device)
 {
 	TLiteCrawlerPrivate *priv;
 
 	g_return_val_if_fail (TLITE_IS_CRAWLER (crawler), FALSE);
-	g_return_val_if_fail (G_IS_MOUNT (mount), FALSE);
+	g_return_val_if_fail (TLITE_IS_CE_DEVICE (device), FALSE);
 
 	priv = TLITE_CRAWLER_GET_PRIVATE (crawler);
-	priv->mount = mount;
+	priv->device = device;
 
 	process_func_start (crawler);
 
 	return TRUE;
 }
 
-GMount*
-tlite_crawler_get_mount (TLiteCrawler *crawler) {
+TLiteCeDevice*
+tlite_crawler_get_device (TLiteCrawler *crawler) {
 	TLiteCrawlerPrivate *priv;
 
 	g_return_val_if_fail (TLITE_IS_CRAWLER (crawler), FALSE);
 
 	priv = TLITE_CRAWLER_GET_PRIVATE (crawler);
-	return priv->mount;
- 
+	return priv->device;
 }

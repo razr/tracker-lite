@@ -3,9 +3,8 @@
 #endif
 
 #include <gio/gio.h>
-#include <gio/gunixinputstream.h>
-#include <gudev/gudev.h>
 
+#include "tlite-subsystem-object.h"
 #include "tlite-crawler-object.h"
 #include "ce-device.h"
 #include "ce-device-manager.h"
@@ -16,11 +15,7 @@ struct _TLiteCeDeviceManagerPrivate {
 	GList *devices;			/* connected devices */
 	GList *miners;			/* available miners */
 	GList *crawlers;		/* available crawlers */
-
-	/* subsystems */
-	GVolumeMonitor *volume_monitor; /* valid only for the mounted devices */
-	GUdevClient *udev_client;		/* more generic, not used currently */
-	GDataInputStream *input_stream; /* for testing */
+	GList *subsystems;		/* available subsystems */
 
 	/* Property values */
 	gboolean auto_start;
@@ -54,14 +49,6 @@ ce_device_manager_finalize (GObject *object)
 	TLiteCeDeviceManagerPrivate *priv;
 
 	priv = TLITE_CE_DEVICE_MANAGER_GET_PRIVATE (object);
-
-	if (priv->volume_monitor) {
-		g_object_unref (priv->volume_monitor);
-	}
-
-	if (priv->udev_client) {
-		g_object_unref (priv->udev_client);
-	}
 
 	G_OBJECT_CLASS (tlite_ce_device_manager_parent_class)->finalize (object);
 }
@@ -126,7 +113,6 @@ tlite_ce_device_manager_class_init (TLiteCeDeviceManagerClass *klass)
 	g_type_class_add_private (object_class, sizeof (TLiteCeDeviceManagerPrivate));
 }
 
-
 static void
 tlite_ce_device_manager_init (TLiteCeDeviceManager *manager)
 {
@@ -134,40 +120,18 @@ tlite_ce_device_manager_init (TLiteCeDeviceManager *manager)
 }
 
 static void
-ce_device_manager_uevent_cb (GUdevClient *client,
-                             const gchar *action,
-                             GUdevDevice *udevice,
-                             TLiteCeDeviceManager *manager)
+ce_device_manager_found_cb (TLiteCrawler *crawler,
+                            TLiteCeDeviceManager *manager)
 {
-	if (g_str_equal (g_udev_device_get_devtype(udevice), "usb_device")) {
-		g_printf ("%s ID_SERIAL : %s\n", action, g_udev_device_get_property (udevice, "ID_SERIAL"));
-	}
-
-#if 0
-		/* print all properties */
-		gchar **list, **iter;
-		list = g_udev_device_get_property_keys (udevice);
-		for (iter = list; iter && *iter; iter++) {
-			g_printf ("%s : %s\n", *iter, g_udev_device_get_property (udevice, *iter));
-		}
-#endif
-}
-
-static void
-ce_device_manager_found_cb (TLiteCrawler *crawler)
-{
+	TLiteCeDeviceManagerPrivate *priv;
 	TLiteCeDevice *device;
-	GMount *mount;
-	gchar  *path;
 
-	mount = tlite_crawler_get_mount (crawler);
-
-	/* media content found, create device and add it to the list */
-	device = tlite_ce_device_new (mount);
+	priv = TLITE_CE_DEVICE_MANAGER_GET_PRIVATE (manager);
+	device = tlite_crawler_get_device (crawler);
 
 	/* create miner and assign crawler to it */
 	g_printf ("%s\n",__FUNCTION__);
-
+	priv->devices = g_list_append (priv->devices, device);
 }
 
 
@@ -177,87 +141,36 @@ ce_device_manager_finished_cb (TLiteCrawler *crawler)
 	g_printf ("%s\n",__FUNCTION__);
 }
 
-
 static void
-ce_device_manager_mount_added_cb (GVolumeMonitor *volume_monitor,
-                                  GMount         *mount,
-                                  TLiteCeDeviceManager *manager)
+ce_device_manager_device_added_cb (TLiteSubsystem *subsystem,
+                                   TLiteCeDevice *device,
+                                   TLiteCeDeviceManager *manager)
 {
 	TLiteCrawler *crawler;
 	TLiteCeDeviceManagerPrivate *priv;
-	GError error;
 
-	g_printf ("%s\n", g_file_get_path (g_mount_get_default_location(mount)));
+	g_printf ("%s\n",__FUNCTION__);
+
 	priv = TLITE_CE_DEVICE_MANAGER_GET_PRIVATE (manager);
 
-	/* start crawler and wait for signal */
+	/* check, probably it is created already, but not used */
 	crawler = tlite_crawler_new();
 	priv->crawlers = g_list_append (priv->crawlers, crawler);
 
 	g_signal_connect_object (crawler, "found",
-	                  G_CALLBACK (ce_device_manager_found_cb), manager, 0);
+					             G_CALLBACK (ce_device_manager_found_cb), manager, 0);
 	g_signal_connect_object (crawler, "finished",
-	                  G_CALLBACK (ce_device_manager_finished_cb), manager, 0);
-
-	/* TODO: replace mount with a usb id, probably with something even more generic */
-	tlite_crawler_start(crawler, mount);
-
+	              				 G_CALLBACK (ce_device_manager_finished_cb), manager, 0);
+	tlite_crawler_start (crawler, device);
 }
 
 static void
-ce_device_manager_mount_removed_cb (GVolumeMonitor *volume_monitor,
-                                    GMount         *mount,
-                                    TLiteCeDeviceManager *manager)
+ce_device_manager_device_removed_cb (TLiteSubsystem *subsystem,
+                                   TLiteCeDevice *device)
 {
-	g_printf ("%s\n", g_file_get_path (g_mount_get_default_location(mount)));
-
-	/* TODO: remove devices from the list */
-}
-
-static void ce_device_manager_read_line_cb(GObject *src,
-                                           GAsyncResult *res,
-                                           gpointer data)
-{
-	char *s, **ss;
-    GError *error = NULL;
-	gsize len;
-	TLiteCeDeviceManager *manager = data;
-	TLiteCeDeviceManagerPrivate *priv;
-
-	priv = TLITE_CE_DEVICE_MANAGER_GET_PRIVATE (manager);
-
-	s = g_data_input_stream_read_line_finish(G_DATA_INPUT_STREAM(src), res,
-                                             &len, &error);
-	/* two commands supported */
-	ss = g_strsplit (s, " ", 0);
-
-	g_printf ("%s:%s\n",ss[0], ss[1]);
-
-	if (0 == g_strcmp0 ("mount-added", ss[0])) {
-		GFile *file;
-		GMount *mount;
-		TLiteCrawler *crawler;
-
-		file = g_file_new_for_path (ss[1]);
-		mount = g_file_find_enclosing_mount (file, NULL, &error);
-		if (mount == NULL)
-			g_printf ("%s\n", error->message);
-
-		/* start crawler and wait for signal */
-		crawler = tlite_crawler_new();
-		priv->crawlers = g_list_append (priv->crawlers, crawler);
-
-		g_signal_connect_object (crawler, "found",
-					             G_CALLBACK (ce_device_manager_found_cb), manager, 0);
-		g_signal_connect_object (crawler, "finished",
-	              				 G_CALLBACK (ce_device_manager_finished_cb), manager, 0);
-
-		/* TODO: replace mount with a usb id, probably with something even more generic */
-		tlite_crawler_start(crawler, mount);
-	}
-
-	g_free(s);
-	g_strfreev(ss);
+	/* stop crawler, if running */
+	/* stop miner, if running */
+	/* remove device if indexed */
 }
 
 static gboolean
@@ -267,28 +180,21 @@ ce_device_manager_initable_init (GInitable     *initable,
 {
 	TLiteCeDeviceManager *manager;
 	TLiteCeDeviceManagerPrivate *priv;
-	const gchar *subsystems[] = {"usb", NULL};
+	TLiteSubsystem *subsystem;
 	GError *inner_error = NULL;
 
 	manager = TLITE_CE_DEVICE_MANAGER (initable);
 	priv = TLITE_CE_DEVICE_MANAGER_GET_PRIVATE (manager);
 
-	/* for non mountable devices, like mtp and iPod */
-	priv->udev_client = g_udev_client_new (subsystems);
-	g_signal_connect_object (priv->udev_client, "uevent",
-	                  G_CALLBACK (ce_device_manager_uevent_cb), manager, 0);
+	/* connect to subsystems */
+	subsystem = tlite_subsystem_new ();
+	priv->subsystems = g_list_append (priv->subsystems, subsystem);
 
-	/* for mountable devices, like USB sticks */
-	priv->volume_monitor = g_volume_monitor_get ();
-	g_signal_connect_object (priv->volume_monitor, "mount-added", 
-	                         G_CALLBACK (ce_device_manager_mount_added_cb), manager, 0);
-	g_signal_connect_object (priv->volume_monitor, "mount-removed",
-	                         G_CALLBACK (ce_device_manager_mount_removed_cb), manager, 0);
+	g_signal_connect_object (subsystem, "device-added",
+	                  G_CALLBACK (ce_device_manager_device_added_cb), manager, 0);
 
-	/* for testing */
-	priv->input_stream = g_data_input_stream_new (g_unix_input_stream_new (STDIN_FILENO, TRUE));
-	g_data_input_stream_read_line_async(priv->input_stream, G_PRIORITY_DEFAULT, NULL,
-                                       ce_device_manager_read_line_cb, manager);
+	g_signal_connect_object (subsystem, "device-removed",
+	                  G_CALLBACK (ce_device_manager_device_removed_cb), manager, 0);
 	
 	return TRUE;
 }

@@ -23,6 +23,8 @@
 #include <glib-object.h>
 #include <gio/gio.h>
 
+#include "ce-device.h"
+
 G_BEGIN_DECLS
 
 #define TLITE_TYPE_CRAWLER            (tlite_crawler_get_type ())
@@ -52,9 +54,8 @@ struct TLiteCrawlerClass {
 GType           tlite_crawler_get_type     (void);
 TLiteCrawler   *tlite_crawler_new          (void);
 gboolean        tlite_crawler_start        (TLiteCrawler *crawler,
-                                            GMount       *mount);
-
-GMount   	   *tlite_crawler_get_mount    (TLiteCrawler *crawler);
+                                            TLiteCeDevice *device);
+TLiteCeDevice  *tlite_crawler_get_device   (TLiteCrawler *crawler);
 
 G_END_DECLS
 

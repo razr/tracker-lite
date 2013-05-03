@@ -46,10 +46,13 @@ AC_SUBST(SQLITE3_LIBS)
 
 AC_CONFIG_FILES([Makefile
                  src/Makefile
+                 src/ce-devices/Makefile
                  src/ce-device-manager/Makefile
                  src/crawlers/Makefile
                  src/crawlers/lib/Makefile
                  src/miners/Makefile
                  src/miners/lib/Makefile
+                 src/subsystems/Makefile
+                 src/subsystems/lib/Makefile
                  src/server/Makefile])
 AC_OUTPUT
