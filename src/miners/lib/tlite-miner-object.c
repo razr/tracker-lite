@@ -21,6 +21,8 @@
 
 #include <glib.h>
 
+#include <tag_c.h>
+
 #include "tlite-miner-object.h"
 #include "tlite-crawler-object.h"
 
@@ -36,6 +38,8 @@ struct _TLiteMinerPrivate {
 	gchar *status;
 	gint progress;
 	gint remaining_time;
+
+	GThreadPool *thread_pool;
 };
 
 enum {
@@ -135,6 +139,30 @@ miner_initable_iface_init (GInitableIface *iface)
 	iface->init = miner_initable_init;
 }
 
+static void
+get_metadata (GList *files,
+              gpointer user_data)
+{
+	GList   *iter;
+	TagLib_File *file;
+	TagLib_Tag *tag;
+
+	g_printf ("%s %d\n", __FUNCTION__, g_list_length (files));
+	for (iter = files; iter; iter = g_list_next (iter))
+	{
+		file = taglib_file_new_type (g_file_get_path ((GFile *)iter->data), TagLib_File_MPEG);
+		tag = taglib_file_tag (file);
+/*		g_printf ("%s %s %s %s\n",
+		          taglib_tag_title (tag),
+		          taglib_tag_artist (tag),
+		          taglib_tag_album (tag),
+		          taglib_tag_genre (tag));
+*/
+		taglib_tag_free_strings ();
+		taglib_file_free (file);		
+	}
+}
+
 static gboolean
 miner_initable_init (GInitable     *initable,
                      GCancellable  *cancellable,
@@ -161,6 +189,8 @@ tlite_miner_init (TLiteMiner *miner)
 {
 	miner->priv = TLITE_MINER_GET_PRIVATE (miner);
 	miner->priv->started = FALSE;
+	miner->priv->thread_pool = g_thread_pool_new ((GFunc) get_metadata,
+	                                   			   miner, 10, TRUE, NULL);
 }
 
 
@@ -176,7 +206,16 @@ miner_scanned_cb (TLiteCrawler *crawler,
 				  GList *files,
                   TLiteMiner *miner)
 {
+	GList *iter;
+
 	g_printf ("%s\n", __FUNCTION__);
+
+/*	for (iter = files; iter; iter = g_list_next (iter))
+	{
+		g_printf ("%s\n", g_file_get_path ((GFile *)iter->data));
+	}
+*/
+	g_thread_pool_push (miner->priv->thread_pool, files, NULL);
 }
 
 static void
@@ -239,7 +278,7 @@ gint
 tlite_miner_pause (TLiteMiner  *miner,
                    GError       **error)
 {
-	g_return_val_if_fail (TLITE_IS_MINER (miner), -1);
+	g_return_val_if_fail (TLITE_IS_MINER (miner), 10);
 
 	g_message ("Miner:'%s' is pausing", miner->priv->name);
 	g_signal_emit (miner, signals[PAUSED], 0);
@@ -271,6 +310,7 @@ miner_finalize (GObject *object)
 	g_free (miner->priv->status);
 	g_free (miner->priv->name);
 
+	g_thread_pool_free (miner->priv->thread_pool, TRUE, FALSE);
 	G_OBJECT_CLASS (tlite_miner_parent_class)->finalize (object);
 }
 

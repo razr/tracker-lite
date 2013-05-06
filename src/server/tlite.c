@@ -2,6 +2,7 @@
 #include <config.h>
 #endif
 
+#include <glib.h>
 #include <gio/gio.h>
 
 #include "options.h"
