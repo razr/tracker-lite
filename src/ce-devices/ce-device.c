@@ -141,6 +141,63 @@ tlite_ce_device_add_db (TLiteCeDevice *device)
 		return FALSE;
 	}
 
+	/* folders */
+	sqlite3_exec (priv->database,
+	              "CREATE TABLE IF NOT EXISTS folders(folder_id INTEGER PRIMARY KEY AUTOINCREMENT, folder_path VARCHAR(4096), folder_modified_time INTEGER)",
+	              NULL, NULL, NULL);
+	sqlite3_exec (priv->database,
+				  "CREATE INDEX IF NOT EXISTS fk_folders_id ON folders (folder_path ASC);",
+	              NULL, NULL, NULL);
+
+	/* files */
+	sqlite3_exec (priv->database,
+	              "CREATE TABLE IF NOT EXISTS files(file_id INTEGER PRIMARY KEY AUTOINCREMENT,file_path VARCHAR(4096),file_creation_time INTEGER,file_modified_time INTEGER,file_size INTEGER,parent_folder_id INTEGER)",
+	              NULL, NULL, NULL);
+	sqlite3_exec (priv->database,
+				  "CREATE INDEX IF NOT EXISTS fk_files_id ON files (file_path, file_creation_time, file_modified_time ASC);",
+	              NULL, NULL, NULL);
+
+	/* titles */
+	sqlite3_exec (priv->database,
+				  "CREATE TABLE IF NOT EXISTS titles(title_id INTEGER PRIMARY KEY AUTOINCREMENT,file_id INTEGER,title_name VARCHAR(256))",
+	              NULL, NULL, NULL);
+	sqlite3_exec (priv->database,
+				  "CREATE INDEX IF NOT EXISTS fk_titles_id ON titles (file_id ASC);",
+	              NULL, NULL, NULL);
+
+	/* artists */
+	sqlite3_exec (priv->database,
+				  "CREATE TABLE IF NOT EXISTS artists(artist_id INTEGER PRIMARY KEY AUTOINCREMENT,file_id INTEGER,artist_name VARCHAR(256))",
+	              NULL, NULL, NULL);
+	sqlite3_exec (priv->database,
+				  "CREATE INDEX IF NOT EXISTS fk_artists_id ON artists (file_id  ASC);",
+	              NULL, NULL, NULL);
+
+	/* albums */
+	sqlite3_exec (priv->database,
+				  "CREATE TABLE IF NOT EXISTS albums(album_id INTEGER PRIMARY KEY AUTOINCREMENT,file_id INTEGER,album_name VARCHAR(256))",
+	              NULL, NULL, NULL);
+	sqlite3_exec (priv->database,
+				  "CREATE INDEX IF NOT EXISTS fk_albums_id ON albums (file_id ASC);",
+	              NULL, NULL, NULL);
+
+	/* composers */
+	sqlite3_exec (priv->database,
+				  "CREATE TABLE IF NOT EXISTS composers(composer_id INTEGER PRIMARY KEY AUTOINCREMENT,file_id INTEGER,composer_name VARCHAR(256))",
+	              NULL, NULL, NULL);
+	sqlite3_exec (priv->database,
+				  "CREATE INDEX IF NOT EXISTS fk_composers_id ON composers (file_id ASC);",
+	              NULL, NULL, NULL);
+
+	/* genres */
+	sqlite3_exec (priv->database,
+				  "CREATE TABLE IF NOT EXISTS genres(genre_id INTEGER PRIMARY KEY AUTOINCREMENT,file_id INTEGER,genre_name VARCHAR(256))",
+	              NULL, NULL, NULL);
+
+	sqlite3_exec (priv->database,
+				  "CREATE INDEX IF NOT EXISTS fk_genres_id ON genres (file_id ASC);",
+	              NULL, NULL, NULL);
+
 	return TRUE;
 }
 
