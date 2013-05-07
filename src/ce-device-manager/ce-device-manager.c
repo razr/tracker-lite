@@ -136,6 +136,8 @@ ce_device_manager_found_cb (TLiteCrawler *crawler,
 	device = tlite_crawler_get_device (crawler);
 	priv->devices = g_list_append (priv->devices, device);
 
+	tlite_ce_device_add_db (device);
+
 	miner = tlite_miner_new ();
 	priv->miners = g_list_append (priv->miners, miner);
 	tlite_miner_start (miner, crawler);

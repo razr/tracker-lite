@@ -133,9 +133,10 @@ tlite_ce_device_add_db (TLiteCeDevice *device)
 	g_return_val_if_fail (TLITE_IS_CE_DEVICE (device), FALSE);
 
 	priv = TLITE_CE_DEVICE_GET_PRIVATE (device);
+	g_printf ("%s %s\n", __FUNCTION__, priv->name);
 
 	/* create DB */
-	result = sqlite3_open ("aaaa", &priv->database);
+	result = sqlite3_open ("aaa.db", &priv->database);
 	if (result != SQLITE_OK) {
 		g_critical ("Couldn't create database: '%s'", priv->name);
 		return FALSE;

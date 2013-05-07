@@ -36,8 +36,8 @@ struct _TLiteMinerPrivate {
 
 	gchar *name;
 	gchar *status;
-	gint progress;
-	gint remaining_time;
+	gint total_files;
+	gint minered_files;
 
 	GThreadPool *thread_pool;
 };
@@ -141,7 +141,7 @@ miner_initable_iface_init (GInitableIface *iface)
 
 static void
 get_metadata (GList *files,
-              gpointer user_data)
+              TLiteMiner *miner)
 {
 	GList   *iter;
 	TagLib_File *file;
@@ -159,8 +159,12 @@ get_metadata (GList *files,
 		          taglib_tag_genre (tag));
 */
 		taglib_tag_free_strings ();
-		taglib_file_free (file);		
+		taglib_file_free (file);
+		miner->priv->minered_files++;
+
+		/* TODO: calculate and send progress here */
 	}
+	g_list_free (files);
 }
 
 static gboolean
@@ -191,6 +195,8 @@ tlite_miner_init (TLiteMiner *miner)
 	miner->priv->started = FALSE;
 	miner->priv->thread_pool = g_thread_pool_new ((GFunc) get_metadata,
 	                                   			   miner, 10, TRUE, NULL);
+	miner->priv->minered_files = 0;
+	miner->priv->total_files = 0;
 }
 
 
@@ -220,9 +226,11 @@ miner_scanned_cb (TLiteCrawler *crawler,
 
 static void
 miner_finished_cb (TLiteCrawler *crawler,
-                  TLiteMiner *miner)
+                   gint scanned_files, 
+                   TLiteMiner *miner)
 {
-	g_printf ("%s\n", __FUNCTION__);
+	g_printf ("%s %d\n", __FUNCTION__, scanned_files);
+	miner->priv->total_files = scanned_files;
 }
 
 void
