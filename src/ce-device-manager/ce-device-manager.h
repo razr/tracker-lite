@@ -27,6 +27,8 @@ typedef struct {
 
 	void (* ce_device_added)   (TLiteCeDeviceManager *manager,
 	                            const gchar          *device_name);
+	void (* ce_device_scanned) (TLiteCeDeviceManager *manager,
+	                            const gchar          *device_name);
 	void (* ce_device_removed) (TLiteCeDeviceManager *manager,
 	                            const gchar          *device_name);
 	void (* indexing_started)  (TLiteCeDeviceManager *manager,

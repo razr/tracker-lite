@@ -56,8 +56,9 @@ typedef struct {
 	void (* resumed)            (TLiteMiner *miner);
 
 	void (* progress)           (TLiteMiner *miner,
-	                             const gchar   *status,
 	                             gint       progress);
+	void (* finished)           (TLiteMiner *miner,
+	                             gint       minered_files);
 
 } TLiteMinerClass;
 

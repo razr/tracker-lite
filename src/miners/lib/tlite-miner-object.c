@@ -36,7 +36,7 @@ struct _TLiteMinerPrivate {
 
 	gchar *name;
 	gchar *status;
-	gint total_files;
+	gint scanned_files;
 	gint minered_files;
 
 	GThreadPool *thread_pool;
@@ -56,6 +56,7 @@ enum {
 	PAUSED,
 	RESUMED,
 	PROGRESS,
+	FINISHED,
 	LAST_SIGNAL
 };
 
@@ -127,6 +128,16 @@ tlite_miner_class_init (TLiteMinerClass *klass)
 		              G_TYPE_NONE, 1,
 		              G_TYPE_INT);
 
+	signals[FINISHED] =
+		g_signal_new ("finished",
+		              G_OBJECT_CLASS_TYPE (object_class),
+		              G_SIGNAL_RUN_LAST,
+		              G_STRUCT_OFFSET (TLiteMinerClass, finished),
+		              NULL, NULL,
+		              g_cclosure_marshal_VOID__INT,
+		              G_TYPE_NONE, 1,
+		              G_TYPE_INT);
+
 	g_type_class_add_private (object_class, sizeof (TLiteMinerPrivate));
 
 	miner_error_quark = g_quark_from_static_string ("TLiteMiner");
@@ -165,6 +176,10 @@ get_metadata (GList *files,
 		/* TODO: calculate and send progress here */
 	}
 	g_list_free (files);
+
+	if (miner->priv->minered_files == miner->priv->scanned_files) {
+		g_signal_emit (miner, signals[FINISHED], 0, miner->priv->scanned_files);
+	}
 }
 
 static gboolean
@@ -196,7 +211,7 @@ tlite_miner_init (TLiteMiner *miner)
 	miner->priv->thread_pool = g_thread_pool_new ((GFunc) get_metadata,
 	                                   			   miner, 10, TRUE, NULL);
 	miner->priv->minered_files = 0;
-	miner->priv->total_files = 0;
+	miner->priv->scanned_files = 0;
 }
 
 
@@ -215,12 +230,6 @@ miner_scanned_cb (TLiteCrawler *crawler,
 	GList *iter;
 
 	g_printf ("%s\n", __FUNCTION__);
-
-/*	for (iter = files; iter; iter = g_list_next (iter))
-	{
-		g_printf ("%s\n", g_file_get_path ((GFile *)iter->data));
-	}
-*/
 	g_thread_pool_push (miner->priv->thread_pool, files, NULL);
 }
 
@@ -230,7 +239,7 @@ miner_finished_cb (TLiteCrawler *crawler,
                    TLiteMiner *miner)
 {
 	g_printf ("%s %d\n", __FUNCTION__, scanned_files);
-	miner->priv->total_files = scanned_files;
+	miner->priv->scanned_files = scanned_files;
 }
 
 void

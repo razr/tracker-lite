@@ -21,6 +21,7 @@ static const gchar introspection_xml[] =
   "<node>"
   "  <interface name='org.freedesktop.TLite.CeDeviceManager'>"
   "    <signal name='CeDeviceAdded' />"
+  "    <signal name='CeDeviceScanned' />"
   "    <signal name='CeDeviceRemoved' />"
   "  </interface>"
   "</node>";
@@ -52,6 +53,7 @@ enum {
 
 enum {
 	CE_DEVICE_ADDED,
+	CE_DEVICE_SCANNED,
 	CE_DEVICE_REMOVED,
 	INDEXING_STARTED,
 	INDEXING_PROGRESS,
@@ -68,6 +70,20 @@ ce_device_manager_finalize (GObject *object)
 
 	priv = TLITE_CE_DEVICE_MANAGER_GET_PRIVATE (object);
 
+
+	if (priv->registration_id != 0) {
+		g_dbus_connection_unregister_object (priv->dbus,
+		                                     priv->registration_id);
+	}
+
+	if (priv->introspection_data) {
+		g_dbus_node_info_unref (priv->introspection_data);
+	}
+
+	if (priv->dbus) {
+		g_object_unref (priv->dbus);
+	}
+
 	G_OBJECT_CLASS (tlite_ce_device_manager_parent_class)->finalize (object);
 }
 
@@ -83,6 +99,16 @@ tlite_ce_device_manager_class_init (TLiteCeDeviceManagerClass *klass)
 		              G_OBJECT_CLASS_TYPE (object_class),
 		              G_SIGNAL_RUN_LAST,
 		              G_STRUCT_OFFSET (TLiteCeDeviceManagerClass, ce_device_added),
+		              NULL, NULL,
+		              g_cclosure_marshal_VOID__STRING,
+		              G_TYPE_NONE, 1,
+		              G_TYPE_STRING);
+
+	signals [CE_DEVICE_SCANNED] =
+		g_signal_new ("ce-device-scanned",
+		              G_OBJECT_CLASS_TYPE (object_class),
+		              G_SIGNAL_RUN_LAST,
+		              G_STRUCT_OFFSET (TLiteCeDeviceManagerClass, ce_device_scanned),
 		              NULL, NULL,
 		              g_cclosure_marshal_VOID__STRING,
 		              G_TYPE_NONE, 1,
@@ -146,9 +172,17 @@ ce_device_manager_found_cb (TLiteCrawler *crawler,
 	TLiteMiner *miner;
 
 	g_printf ("%s\n",__FUNCTION__);
+	priv = TLITE_CE_DEVICE_MANAGER_GET_PRIVATE (manager);
+
 	g_signal_emit (manager, signals[CE_DEVICE_ADDED], 0);
 
-	priv = TLITE_CE_DEVICE_MANAGER_GET_PRIVATE (manager);
+	g_dbus_connection_emit_signal (priv->dbus,
+			                       NULL,
+			                       TLITE_CE_DEVICE_MANAGER_DBUS_PATH_PREFIX,
+			                       TLITE_CE_DEVICE_MANAGER_DBUS_INTERFACE,
+			                       "CeDeviceAdded",
+			                       NULL,
+			                       NULL);
 
 	device = tlite_crawler_get_device (crawler);
 	priv->devices = g_list_append (priv->devices, device);
@@ -166,7 +200,18 @@ ce_device_manager_finished_cb (TLiteCrawler *crawler,
                                gint scanned_files,
                                TLiteCeDeviceManager *manager)
 {
+	TLiteCeDeviceManagerPrivate *priv = TLITE_CE_DEVICE_MANAGER_GET_PRIVATE (manager);
 	g_printf ("%s %d\n",__FUNCTION__, scanned_files);
+
+	g_signal_emit (manager, signals[CE_DEVICE_SCANNED], 0);
+	g_dbus_connection_emit_signal (priv->dbus,
+			                       NULL,
+			                       TLITE_CE_DEVICE_MANAGER_DBUS_PATH_PREFIX,
+			                       TLITE_CE_DEVICE_MANAGER_DBUS_INTERFACE,
+			                       "CeDeviceScanned",
+			                       NULL,
+			                       NULL);
+
 }
 
 static void
