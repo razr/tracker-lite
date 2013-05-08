@@ -8,29 +8,19 @@
 #include "options.h"
 #include "ce-device-manager.h"
 
-static TLiteCeDeviceManager * manager;
+static TLiteCeDeviceManager *manager;
+static GMainLoop *main_loop;
 
-static void activate(GApplication *app)
+int main(int argc, char *argv[])
 {
-	manager = tlite_ce_device_manager_new();
-}
 
-int main(int argc, char * argv[])
-{
-	GApplication *app;
-	int status;
+	main_loop = g_main_loop_new (NULL, FALSE);
+	manager = tlite_ce_device_manager_new ();
 
-	app = g_application_new("com.windriver.tracker-lite",
-	                        G_APPLICATION_FLAGS_NONE);
+	g_main_loop_run (main_loop);
 
-//	g_signal_connect(app, "command-line", G_CALLBACK(command_line), NULL);
+	g_object_unref (manager);
+	g_main_loop_unref (main_loop);
 
-	g_signal_connect(app, "activate", G_CALLBACK(activate), NULL);
-
-	g_application_hold(app);
-	status = g_application_run(app, argc, argv);
-
-	g_object_unref(app);
-
-	return status;
+	return 0;
 }

@@ -12,11 +12,28 @@
 
 #define TLITE_CE_DEVICE_MANAGER_GET_PRIVATE(o) (G_TYPE_INSTANCE_GET_PRIVATE ((o), TLITE_TYPE_CE_DEVICE_MANAGER, TLiteCeDeviceManagerPrivate))
 
+#define TLITE_CE_DEVICE_MANAGER_DBUS_INTERFACE   "org.freedesktop.TLite.CeDeviceManager"
+#define TLITE_CE_DEVICE_MANAGER_DBUS_NAME_PREFIX "org.freedesktop.TLite.CeDeviceManager"
+#define TLITE_CE_DEVICE_MANAGER_DBUS_PATH_PREFIX "/org/freedesktop/TLite/CeDeviceManager"
+
+/* Introspection data for the service we are exporting */
+static const gchar introspection_xml[] =
+  "<node>"
+  "  <interface name='org.freedesktop.TLite.CeDeviceManager'>"
+  "    <signal name='CeDeviceAdded' />"
+  "    <signal name='CeDeviceRemoved' />"
+  "  </interface>"
+  "</node>";
+
 struct _TLiteCeDeviceManagerPrivate {
 	GList *devices;			/* connected devices */
 	GList *miners;			/* available miners */
 	GList *crawlers;		/* available crawlers */
 	GList *subsystems;		/* available subsystems */
+
+	GDBusConnection *dbus;
+	GDBusNodeInfo *introspection_data;
+	guint registration_id;
 
 	/* Property values */
 	gboolean auto_start;
@@ -193,6 +210,11 @@ ce_device_manager_initable_init (GInitable     *initable,
 	TLiteCeDeviceManagerPrivate *priv;
 	TLiteSubsystem *subsystem;
 	GError *inner_error = NULL;
+	GDBusInterfaceVTable interface_vtable = {
+		NULL,
+		NULL,
+		NULL
+	};
 
 	manager = TLITE_CE_DEVICE_MANAGER (initable);
 	priv = TLITE_CE_DEVICE_MANAGER_GET_PRIVATE (manager);
@@ -207,6 +229,37 @@ ce_device_manager_initable_init (GInitable     *initable,
 	g_signal_connect_object (subsystem, "device-removed",
 	                  G_CALLBACK (ce_device_manager_device_removed_cb), manager, 0);
 	
+	/* Try to get DBus connection... */
+	priv->dbus = g_bus_get_sync (G_BUS_TYPE_SESSION, NULL, &inner_error);
+	if (!priv->dbus) {
+		g_propagate_error (error, inner_error);
+		return FALSE;
+	}
+
+	/* Setup introspection data */
+	priv->introspection_data = g_dbus_node_info_new_for_xml (introspection_xml, &inner_error);
+	if (!priv->introspection_data) {
+		g_propagate_error (error, inner_error);
+		return FALSE;
+	}
+
+	priv->registration_id =
+		g_dbus_connection_register_object (priv->dbus,
+		                                   TLITE_CE_DEVICE_MANAGER_DBUS_PATH_PREFIX,
+	                                       priv->introspection_data->interfaces[0],
+	                                       &interface_vtable,
+	                                       manager,
+	                                       NULL,
+		                                   &inner_error);
+
+	if (inner_error) {
+		g_propagate_error (error, inner_error);
+		g_prefix_error (error,
+		                "Could not register the D-Bus object '%s'. ",
+		                TLITE_CE_DEVICE_MANAGER_DBUS_PATH_PREFIX);
+		return FALSE;
+	}
+
 	return TRUE;
 }
 
