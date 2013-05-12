@@ -54,6 +54,7 @@ AC_CONFIG_FILES([Makefile
                  src/ce-device-manager/Makefile
                  src/crawlers/Makefile
                  src/crawlers/lib/Makefile
+                 src/extractors/Makefile
                  src/miners/Makefile
                  src/miners/lib/Makefile
                  src/subsystems/Makefile

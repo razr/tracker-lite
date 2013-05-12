@@ -57,6 +57,10 @@ typedef struct {
 
 	void (* progress)           (TLiteMiner *miner,
 	                             gint       progress);
+
+	void (* minered)            (TLiteMiner *miner,
+	                             gpointer       list);
+
 	void (* finished)           (TLiteMiner *miner,
 	                             gint       minered_files);
 

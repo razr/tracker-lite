@@ -21,10 +21,9 @@
 
 #include <glib.h>
 
-#include <tag_c.h>
-
 #include "tlite-miner-object.h"
 #include "tlite-crawler-object.h"
+#include "tlite-metadata-info.h"
 
 #define TLITE_MINER_GET_PRIVATE(o) (G_TYPE_INSTANCE_GET_PRIVATE ((o), TLITE_TYPE_MINER, TLiteMinerPrivate))
 
@@ -56,6 +55,7 @@ enum {
 	PAUSED,
 	RESUMED,
 	PROGRESS,
+	MINERED,
 	FINISHED,
 	LAST_SIGNAL
 };
@@ -128,6 +128,16 @@ tlite_miner_class_init (TLiteMinerClass *klass)
 		              G_TYPE_NONE, 1,
 		              G_TYPE_INT);
 
+	signals[MINERED] =
+		g_signal_new ("minered",
+		              G_OBJECT_CLASS_TYPE (object_class),
+		              G_SIGNAL_RUN_LAST,
+		              G_STRUCT_OFFSET (TLiteMinerClass, minered),
+		              NULL, NULL,
+		              g_cclosure_marshal_VOID__POINTER,
+		              G_TYPE_NONE, 1,
+		              G_TYPE_POINTER);
+
 	signals[FINISHED] =
 		g_signal_new ("finished",
 		              G_OBJECT_CLASS_TYPE (object_class),
@@ -154,28 +164,24 @@ static void
 get_metadata (GList *files,
               TLiteMiner *miner)
 {
-	GList   *iter;
-	TagLib_File *file;
-	TagLib_Tag *tag;
+	GList   *iter, *infos;
 
 	g_printf ("%s %d\n", __FUNCTION__, g_list_length (files));
 	for (iter = files; iter; iter = g_list_next (iter))
 	{
-		file = taglib_file_new_type (g_file_get_path ((GFile *)iter->data), TagLib_File_MPEG);
-		tag = taglib_file_tag (file);
-/*		g_printf ("%s %s %s %s\n",
-		          taglib_tag_title (tag),
-		          taglib_tag_artist (tag),
-		          taglib_tag_album (tag),
-		          taglib_tag_genre (tag));
-*/
-		taglib_tag_free_strings ();
-		taglib_file_free (file);
+		TLiteMetadataInfo *info;
+		GFile *file = (GFile *)iter->data;
+	
+		info = tlite_metadata_info_new (file);
+		g_object_unref (file);
 		miner->priv->minered_files++;
 
-		/* TODO: calculate and send progress here */
+		infos = g_list_append (infos, info);
 	}
 	g_list_free (files);
+
+	/* TODO: calculate and send progress here */
+	g_signal_emit (miner, signals[MINERED], 0, infos);
 
 	if (miner->priv->minered_files == miner->priv->scanned_files) {
 		g_signal_emit (miner, signals[FINISHED], 0, miner->priv->scanned_files);
@@ -295,7 +301,7 @@ gint
 tlite_miner_pause (TLiteMiner  *miner,
                    GError       **error)
 {
-	g_return_val_if_fail (TLITE_IS_MINER (miner), 10);
+	g_return_val_if_fail (TLITE_IS_MINER (miner), TRUE);
 
 	g_message ("Miner:'%s' is pausing", miner->priv->name);
 	g_signal_emit (miner, signals[PAUSED], 0);
