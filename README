@@ -1,5 +1,5 @@
 #Ubuntu dev env setup:
-sudo apt-get install build-essential libglib2.0-dev libsqlite3-dev libtagc0-dev libicu-dev
+sudo apt-get install build-essential libglib2.0-dev libudev0 libsqlite3-dev libtagc0-dev libicu-dev
 
 #build steps :
 autoreconf --force --install
@@ -7,4 +7,10 @@ autoreconf --force --install
 ./configure
 
 ./make
+
+#test
+sqlite3 <dbname>
+.table
+
+dbus-monitor --session "type='signal',path=/org/freedesktop/TLite/CeDeviceManager,interface='org.freedesktop.TLite.CeDeviceManager'"
 
