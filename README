@@ -11,6 +11,8 @@ autoreconf --force --install
 #test
 sqlite3 <dbname>
 .table
+.schema <table>
+select * from <table>;
 
 dbus-monitor --session "type='signal',path=/org/freedesktop/TLite/CeDeviceManager,interface='org.freedesktop.TLite.CeDeviceManager'"
 

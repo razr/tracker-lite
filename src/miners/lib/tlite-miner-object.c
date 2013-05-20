@@ -164,27 +164,28 @@ static void
 get_metadata (GList *files,
               TLiteMiner *miner)
 {
-	GList   *iter, *infos;
+	GList   *iter, *infos = NULL;
 
 	g_printf ("%s %d\n", __FUNCTION__, g_list_length (files));
 	for (iter = files; iter; iter = g_list_next (iter))
 	{
 		TLiteMetadataInfo *info;
 		GFile *file = (GFile *)iter->data;
-	
+
 		info = tlite_metadata_info_new (file);
-		g_object_unref (file);
 		miner->priv->minered_files++;
 
 		infos = g_list_append (infos, info);
 	}
+
+	/* TODO: remove GList elements */
 	g_list_free (files);
 
 	/* TODO: calculate and send progress here */
 	g_signal_emit (miner, signals[MINERED], 0, infos);
 
 	if (miner->priv->minered_files == miner->priv->scanned_files) {
-		g_signal_emit (miner, signals[FINISHED], 0, miner->priv->scanned_files);
+		g_signal_emit (miner, signals[FINISHED], 0, miner->priv->minered_files);
 	}
 }
 
@@ -230,13 +231,11 @@ tlite_miner_error_quark (void)
 
 static void
 miner_scanned_cb (TLiteCrawler *crawler,
-				  GList *files,
+				  GList *infos,
                   TLiteMiner *miner)
 {
-	GList *iter;
-
 	g_printf ("%s\n", __FUNCTION__);
-	g_thread_pool_push (miner->priv->thread_pool, files, NULL);
+	g_thread_pool_push (miner->priv->thread_pool, infos, NULL);
 }
 
 static void

@@ -57,6 +57,7 @@ AC_CONFIG_FILES([Makefile
                  src/extractors/Makefile
                  src/miners/Makefile
                  src/miners/lib/Makefile
+                 src/store/Makefile
                  src/subsystems/Makefile
                  src/subsystems/lib/Makefile
                  src/server/Makefile])

@@ -3,6 +3,8 @@
 
 #include <glib-object.h>
 
+#include "tlite-metadata-info.h"
+
 G_BEGIN_DECLS
 
 #define TLITE_TYPE_CE_DEVICE         (tlite_ce_device_get_type())
@@ -33,10 +35,12 @@ GType                tlite_ce_device_get_type           (void) G_GNUC_CONST;
 GQuark               tlite_ce_device_error_quark        (void) G_GNUC_CONST;
 
 TLiteCeDevice *tlite_ce_device_new          (GFile *file);
-gboolean tlite_ce_device_add_db				(TLiteCeDevice	*device);
 GFile	*tlite_ce_device_get_file           (TLiteCeDevice  *device);
+gchar	*tlite_ce_device_get_name           (TLiteCeDevice  *device);
 gboolean tlite_ce_device_is_indexed         (TLiteCeDevice  *device);
 void tlite_ce_device_indexed     	        (TLiteCeDevice  *device);
+gboolean tlite_ce_device_set_db             (TLiteCeDevice  *device, gpointer db);
+gpointer tlite_ce_device_get_db             (TLiteCeDevice  *device);
 
 G_END_DECLS
 

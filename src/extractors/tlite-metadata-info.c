@@ -1,18 +1,22 @@
 #include <glib.h>
+#include <gio/gio.h>
 
 #include "taglib-metadata-extractor.h"
 #include "tlite-metadata-info.h"
 
+enum {
+	TITLE,
+	ALBUM,
+	ARTIST,
+	GENRE,
+	COMPOSER,
+	LAST_METADATA_FIELD
+};
+
 struct _TLiteMetadataInfo
 {
-	GFile *file;
-
-	gchar *title;
-	gchar *album;
-	gchar *artist;
-	gchar *genre;
-	gchar *composer;
-
+	char *path;
+	gchar *metadata[LAST_METADATA_FIELD];
 	gint ref_count;
 };
 
@@ -23,14 +27,13 @@ TLiteMetadataInfo *
 tlite_metadata_info_new (GFile       *file)
 {
 	TLiteMetadataInfo *info;
-	GError *error = NULL;
 
 	g_return_val_if_fail (G_IS_FILE (file), NULL);
 
 	info = g_slice_new0 (TLiteMetadataInfo);
-	info->file = g_object_ref (file);
 
-	get_metadata (info->file, &info->artist);
+	get_metadata (file, info->metadata);
+	info->path = g_file_get_path (file);
 
 	info->ref_count = 1;
 
@@ -50,26 +53,31 @@ tlite_metadata_info_ref (TLiteMetadataInfo *info)
 void
 tlite_metadata_info_unref (TLiteMetadataInfo *info)
 {
+	int i;
+
 	g_return_if_fail (info != NULL);
 
 	if (g_atomic_int_dec_and_test (&info->ref_count)) {
-		g_object_unref (info->file);
-
-		g_free (info->title);
-		g_free (info->album);
-		g_free (info->artist);
-		g_free (info->genre);
-		g_free (info->composer);
+		for (i = 0; i < LAST_METADATA_FIELD; i++)
+			g_free (info->metadata[i]);
 
 		g_slice_free (TLiteMetadataInfo, info);
 	}
 }
 
 
-GFile *
-tlite_metadata_info_get_file (TLiteMetadataInfo *info)
+char *
+tlite_metadata_info_get_path (TLiteMetadataInfo *info)
 {
 	g_return_val_if_fail (info != NULL, NULL);
 
-	return info->file;
+	return info->path;
+}
+
+gchar **
+tlite_metadata_info_get_metadata (TLiteMetadataInfo *info)
+{
+	g_return_val_if_fail (info != NULL, NULL);
+
+	return info->metadata;
 }
