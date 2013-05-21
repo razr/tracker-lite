@@ -20,5 +20,5 @@ get_metadata (GFile *file,
 	metadata [4] = taglib_tag_artist (taglib_tag);
 
 //	taglib_tag_free_strings ();
-	taglib_file_free (taglib_file);
+//	taglib_file_free (taglib_file);
 }

@@ -161,23 +161,23 @@ miner_initable_iface_init (GInitableIface *iface)
 }
 
 static void
-get_metadata (GList *files,
-              TLiteMiner *miner)
+miner_get_metadata (GList *files,
+                    TLiteMiner *miner)
 {
 	GList   *iter, *infos = NULL;
 
-	g_printf ("%s %d\n", __FUNCTION__, g_list_length (files));
+	g_printf ("%s %d %d %d\n", __FUNCTION__, g_list_length (files), miner->priv->minered_files, miner->priv->scanned_files);
 	for (iter = files; iter; iter = g_list_next (iter))
 	{
 		TLiteMetadataInfo *info;
 		GFile *file = (GFile *)iter->data;
 
 		info = tlite_metadata_info_new (file);
-		miner->priv->minered_files++;
 
 		infos = g_list_append (infos, info);
 	}
 
+	miner->priv->minered_files += g_list_length (files);
 	/* TODO: remove GList elements */
 	g_list_free (files);
 
@@ -215,7 +215,7 @@ tlite_miner_init (TLiteMiner *miner)
 {
 	miner->priv = TLITE_MINER_GET_PRIVATE (miner);
 	miner->priv->started = FALSE;
-	miner->priv->thread_pool = g_thread_pool_new ((GFunc) get_metadata,
+	miner->priv->thread_pool = g_thread_pool_new ((GFunc) miner_get_metadata,
 	                                   			   miner, 10, TRUE, NULL);
 	miner->priv->minered_files = 0;
 	miner->priv->scanned_files = 0;
@@ -230,18 +230,18 @@ tlite_miner_error_quark (void)
 
 
 static void
-miner_scanned_cb (TLiteCrawler *crawler,
-				  GList *infos,
-                  TLiteMiner *miner)
+miner_crawler_scanned_cb (TLiteCrawler *crawler,
+				          GList *files,
+                          TLiteMiner *miner)
 {
-	g_printf ("%s\n", __FUNCTION__);
-	g_thread_pool_push (miner->priv->thread_pool, infos, NULL);
+	g_printf ("%s %d\n", __FUNCTION__, g_list_length (files));
+	g_thread_pool_push (miner->priv->thread_pool, files, NULL);
 }
 
 static void
-miner_finished_cb (TLiteCrawler *crawler,
-                   gint scanned_files, 
-                   TLiteMiner *miner)
+miner_crawler_finished_cb (TLiteCrawler *crawler,
+                           gint scanned_files, 
+                           TLiteMiner *miner)
 {
 	g_printf ("%s %d\n", __FUNCTION__, scanned_files);
 	miner->priv->scanned_files = scanned_files;
@@ -258,9 +258,9 @@ tlite_miner_start (TLiteMiner *miner,
 	miner->priv->started = TRUE;
 
 	g_signal_connect_object (crawler, "scanned",
-					             G_CALLBACK (miner_scanned_cb), miner, 0);
+					             G_CALLBACK (miner_crawler_scanned_cb), miner, 0);
 	g_signal_connect_object (crawler, "finished",
-	              				 G_CALLBACK (miner_finished_cb), miner, 0);
+	              				 G_CALLBACK (miner_crawler_finished_cb), miner, 0);
 
 	g_signal_emit (miner, signals[STARTED], 0);
 }

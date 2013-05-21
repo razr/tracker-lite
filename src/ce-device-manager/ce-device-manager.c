@@ -32,6 +32,7 @@ struct _TLiteCeDeviceManagerPrivate {
 	GList *miners;			/* available miners */
 	GList *crawlers;		/* available crawlers */
 	GList *subsystems;		/* available subsystems */
+	GList *stores;			/* available stores */
 
 	GDBusConnection *dbus;
 	GDBusNodeInfo *introspection_data;
@@ -165,8 +166,16 @@ tlite_ce_device_manager_init (TLiteCeDeviceManager *manager)
 }
 
 static void
-ce_device_manager_found_cb (TLiteCrawler *crawler,
-                            TLiteCeDeviceManager *manager)
+ce_device_manager_store_finished_cb (TLiteStore *store,
+                                     gint stored_files,
+                        			 TLiteCeDeviceManager *manager)
+{
+	g_printf ("%s %d\n",__FUNCTION__, stored_files);	
+}
+
+static void
+ce_device_manager_crawler_found_cb (TLiteCrawler *crawler,
+                                    TLiteCeDeviceManager *manager)
 {
 	TLiteCeDeviceManagerPrivate *priv;
 	TLiteCeDevice *device;
@@ -193,17 +202,22 @@ ce_device_manager_found_cb (TLiteCrawler *crawler,
 	priv->miners = g_list_append (priv->miners, miner);
 
 	store = tlite_store_new (device);
-	tlite_store_create_db (device);
-	tlite_store_start (store, miner);
+	priv->stores = g_list_append (priv->stores, store);
 
+	tlite_store_create_db (device);
+
+	g_signal_connect_object (store, "finished",
+	              		     G_CALLBACK (ce_device_manager_store_finished_cb), manager, 0);
+
+	tlite_store_start (store, miner);
 	tlite_miner_start (miner, crawler);
 }
 
 
 static void
-ce_device_manager_finished_cb (TLiteCrawler *crawler,
-                               gint scanned_files,
-                               TLiteCeDeviceManager *manager)
+ce_device_manager_crawler_finished_cb (TLiteCrawler *crawler,
+                                       gint scanned_files,
+                                       TLiteCeDeviceManager *manager)
 {
 	TLiteCeDeviceManagerPrivate *priv = TLITE_CE_DEVICE_MANAGER_GET_PRIVATE (manager);
 	g_printf ("%s %d\n",__FUNCTION__, scanned_files);
@@ -236,9 +250,9 @@ ce_device_manager_device_added_cb (TLiteSubsystem *subsystem,
 	priv->crawlers = g_list_append (priv->crawlers, crawler);
 
 	g_signal_connect_object (crawler, "found",
-					             G_CALLBACK (ce_device_manager_found_cb), manager, 0);
+					             G_CALLBACK (ce_device_manager_crawler_found_cb), manager, 0);
 	g_signal_connect_object (crawler, "finished",
-	              				 G_CALLBACK (ce_device_manager_finished_cb), manager, 0);
+	              				 G_CALLBACK (ce_device_manager_crawler_finished_cb), manager, 0);
 	tlite_crawler_start (crawler, device);
 }
 

@@ -249,12 +249,12 @@ tlite_store_add_metadata (TLiteCeDevice	*device,
 }
 
 static void
-get_metadata_info (GList *infos,
+store_get_metadata_info (GList *infos,
                    TLiteStore *store)
 {
 	GList   *iter;
 	sqlite3 *db;
-	g_printf ("%s %d\n", __FUNCTION__, g_list_length (infos));
+	g_printf ("%s %d %d %d\n", __FUNCTION__, g_list_length (infos), store->priv->stored_files, store->priv->minered_files);
 
 	db = (sqlite3 *) tlite_ce_device_get_db (store->priv->device);
 
@@ -266,13 +266,13 @@ get_metadata_info (GList *infos,
 
 		tlite_store_add_metadata (store->priv->device, info);
 	}
+	store->priv->stored_files += g_list_length (infos);
 	g_list_free (infos);
 	sqlite3_exec (db, "COMMIT TRANSACTION;", NULL, NULL, NULL);
 
 	if (store->priv->stored_files == store->priv->minered_files) {
 		g_signal_emit (store, signals[FINISHED], 0, store->priv->stored_files);
 	}
-
 }
 
 static gboolean
@@ -300,7 +300,7 @@ static void
 tlite_store_init (TLiteStore *store)
 {
 	store->priv = TLITE_STORE_GET_PRIVATE (store);
-	store->priv->thread_pool = g_thread_pool_new ((GFunc) get_metadata_info,
+	store->priv->thread_pool = g_thread_pool_new ((GFunc) store_get_metadata_info,
 	                                   			   store, 10, TRUE, NULL);
 	store->priv->stored_files = 0;
 	store->priv->minered_files = 0;
@@ -315,18 +315,18 @@ tlite_store_error_quark (void)
 
 
 static void
-store_minered_cb (TLiteMiner *miner,
-				  GList *infos,
-                  TLiteStore *store)
+store_miner_minered_cb (TLiteMiner *miner,
+				        GList *infos,
+                        TLiteStore *store)
 {
 	g_printf ("%s %d\n", __FUNCTION__, g_list_length (infos));
 	g_thread_pool_push (store->priv->thread_pool, infos, NULL);
 }
 
 static void
-store_finished_cb (TLiteMiner *miner,
-                   gint minered_files, 
-                   TLiteStore *store)
+store_miner_finished_cb (TLiteMiner *miner,
+                         gint minered_files, 
+                         TLiteStore *store)
 {
 	g_printf ("%s %d\n", __FUNCTION__, minered_files);
 	store->priv->minered_files = minered_files;
@@ -340,9 +340,9 @@ tlite_store_start (TLiteStore *store,
 	g_return_if_fail (TLITE_IS_MINER (miner));
 
 	g_signal_connect_object (miner, "minered",
-					             G_CALLBACK (store_minered_cb), store, 0);
+					             G_CALLBACK (store_miner_minered_cb), store, 0);
 	g_signal_connect_object (miner, "finished",
-	              				 G_CALLBACK (store_finished_cb), store, 0);
+	              				 G_CALLBACK (store_miner_finished_cb), store, 0);
 
 	g_signal_emit (store, signals[STARTED], 0);
 }

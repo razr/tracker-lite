@@ -120,7 +120,7 @@ scan_dir (TLiteCrawler *crawler, GFile *dir)
 	GList				*files = NULL;
 	static gboolean     found = FALSE;
 
-	g_printf ("%s\n", g_file_get_path (dir));
+//	g_printf ("%s\n", g_file_get_path (dir));
 
 	/* TODO: shall be cancellable */
 	enumerator =  g_file_enumerate_children (dir,
