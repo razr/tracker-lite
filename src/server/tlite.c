@@ -5,7 +5,6 @@
 #include <glib.h>
 #include <gio/gio.h>
 
-#include "options.h"
 #include "ce-device-manager.h"
 
 static TLiteCeDeviceManager *manager;
