@@ -2,8 +2,7 @@
 
 bin_PROGRAMS = tlite
 tlite_SOURCES = tlite.c
-tlite_CFLAGS = -Wall
-tlite_CPPFLAGS = $(GIO_CFLAGS) $(GUDEV_CFLAGS) \
+tlite_CFLAGS = $(GIO_CFLAGS) $(GUDEV_CFLAGS) $(GCOV_CFLAGS) \
                         -I$(top_srcdir)/src/ce-device-manager
-tlite_LDADD = $(GIO_LIBS) $(GUDEV_LIBS) \
+tlite_LDADD = $(GIO_LIBS) $(GUDEV_LIBS) $(GCOV_LIBS) \
                      $(top_srcdir)/src/ce-device-manager/libtlite-ce-device-manager.la

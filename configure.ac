@@ -42,6 +42,50 @@ PKG_CHECK_MODULES([SQLITE3], [sqlite3])
 AC_SUBST(SQLITE3_CFLAGS)
 AC_SUBST(SQLITE3_LIBS)
 
+AC_ARG_ENABLE(unit_tests,
+              AS_HELP_STRING([--enable-unit-tests],
+                             [enable unit tests [[default=yes]]]), ,
+              [enable_unit_tests=yes])
+
+if test "x$enable_unit_tests" != "xno" ; then
+	have_unit_tests=yes
+
+	AC_DEFINE(HAVE_UNIT_TEST, 1, [Define if we have GLib unit test framework])
+
+	AC_PATH_PROG(GTESTER,gtester,yes,no)
+	if test $GTESTER == "no"; then
+		AC_MSG_ERROR([Could not find 'gtester'])
+	fi
+else
+   have_unit_tests=no
+fi
+
+AM_CONDITIONAL(HAVE_UNIT_TESTS, test "x$have_unit_tests" = "xyes")
+
+AC_ARG_ENABLE(gcov,
+              AS_HELP_STRING([--enable-gcov],
+                             [enable coverage reporting support [[default=no]]]),,
+              [enable_gcov=no])
+AM_CONDITIONAL(ENABLE_GCOV, test "x$enable_gcov" != "xno")
+
+if test "x$enable_gcov" != "xno" ; then
+	AC_PATH_PROG(LCOV,lcov,yes,no)
+	AC_PATH_PROG(GENHTML,genhtml,yes,no)
+
+	if test "$LCOV" == "no" -o "$GENHTML" == "no"; then
+		AC_MSG_ERROR(['lcov' and 'genhtml' are required for profiling.])
+	fi
+
+	GCOV_CFLAGS="-ftest-coverage -fprofile-arcs"
+	GCOV_LIBS="-lgcov"
+else
+	GCOV_CFLAGS=
+	GCOV_LIBS=
+fi
+
+AC_SUBST(GCOV_CFLAGS)
+AC_SUBST(GCOV_LIBS)
+
 # Checks for header files.
 
 # Checks for typedefs, structures, and compiler characteristics.
@@ -60,5 +104,7 @@ AC_CONFIG_FILES([Makefile
                  src/store/Makefile
                  src/subsystems/Makefile
                  src/subsystems/lib/Makefile
-                 src/server/Makefile])
+                 src/server/Makefile
+                 tests/Makefile
+                 tests/extractors/Makefile])
 AC_OUTPUT

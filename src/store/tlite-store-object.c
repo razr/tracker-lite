@@ -351,8 +351,15 @@ static void
 store_finalize (GObject *object)
 {
 	TLiteStore *store = TLITE_STORE (object);
+	sqlite3 *db;
 
 	g_free (store->priv->name);
+
+	db = (sqlite3 *) tlite_ce_device_get_db (store->priv->device);
+
+	if (db != NULL) {
+		sqlite3_close(db);
+	}
 
 	g_object_unref (store->priv->device);
 	g_thread_pool_free (store->priv->thread_pool, TRUE, FALSE);

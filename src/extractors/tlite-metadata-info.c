@@ -32,7 +32,7 @@ tlite_metadata_info_new (GFile       *file)
 
 	info = g_slice_new0 (TLiteMetadataInfo);
 
-	get_metadata (file, info->metadata);
+	extractor_get_metadata (file, info->metadata);
 	info->path = g_file_get_path (file);
 
 	info->ref_count = 1;

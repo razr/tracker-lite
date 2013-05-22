@@ -33,10 +33,6 @@ ce_device_finalize (GObject *object)
 {
 	TLiteCeDevicePrivate *priv = TLITE_CE_DEVICE_GET_PRIVATE (object);
 
-	if (priv->database) {
-		sqlite3_close(priv->database);
-	}
-
 	G_OBJECT_CLASS (tlite_ce_device_parent_class)->finalize (object);
 }
 
@@ -65,6 +61,7 @@ static void
 tlite_ce_device_init (TLiteCeDevice *device)
 {
 	device->priv = TLITE_CE_DEVICE_GET_PRIVATE (device);
+	device->priv->database = NULL;
 }
 
 

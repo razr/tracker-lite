@@ -111,7 +111,7 @@ tlite_crawler_new (void)
 }
 
 static GList *
-scan_dir (TLiteCrawler *crawler, GFile *dir)
+crawler_scan_dir (TLiteCrawler *crawler, GFile *dir)
 {
 	GFileEnumerator		*enumerator;
 	GError				*error = NULL;
@@ -146,7 +146,7 @@ scan_dir (TLiteCrawler *crawler, GFile *dir)
 				GList	*scanned;
 				/* scan new folder - recurse */
 				crawler->priv->scanned_dirs++;
-				scanned = scan_dir (crawler, g_file_enumerator_get_child (enumerator, info));
+				scanned = crawler_scan_dir (crawler, g_file_enumerator_get_child (enumerator, info));
 				if (scanned != NULL) {
 					g_signal_emit (crawler, signals[SCANNED], 0, scanned);
 				}
@@ -179,7 +179,7 @@ scan_dir (TLiteCrawler *crawler, GFile *dir)
 }
 
 static gboolean
-process_func (gpointer data)
+crawler_process_func (gpointer data)
 {
 	TLiteCrawler      	*crawler;
 	TLiteCrawlerPrivate	*priv;
@@ -191,7 +191,7 @@ process_func (gpointer data)
 	priv = TLITE_CRAWLER_GET_PRIVATE (crawler);
 
 	file = tlite_ce_device_get_file (priv->device);
-	scanned = scan_dir (crawler, file);
+	scanned = crawler_scan_dir (crawler, file);
 
 	if (scanned != NULL) {
 		g_signal_emit (crawler, signals[SCANNED], 0, scanned);
@@ -201,16 +201,6 @@ process_func (gpointer data)
 
 	g_printf ("dirs = %d files = %d\n",priv->scanned_dirs, priv->scanned_files);
 	return FALSE;
-}
-
-static gboolean
-process_func_start (TLiteCrawler *crawler)
-{
-	if (crawler->priv->idle_id == 0) {
-		crawler->priv->idle_id = g_idle_add (process_func, crawler);
-	}
-
-	return TRUE;
 }
 
 
@@ -226,7 +216,9 @@ tlite_crawler_start (TLiteCrawler *crawler,
 	priv = TLITE_CRAWLER_GET_PRIVATE (crawler);
 	priv->device = device;
 
-	process_func_start (crawler);
+	if (priv->idle_id == 0) {
+		priv->idle_id = g_idle_add (crawler_process_func, crawler);
+	}
 
 	return TRUE;
 }

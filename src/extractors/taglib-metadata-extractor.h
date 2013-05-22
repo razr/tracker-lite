@@ -5,7 +5,7 @@
 
 G_BEGIN_DECLS
 
-void get_metadata (GFile *file, gchar *metadata[]);
+void extractor_get_metadata (GFile *file, gchar *metadata[]);
 
 G_END_DECLS
 

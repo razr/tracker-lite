@@ -4,8 +4,8 @@
 #include "taglib-metadata-extractor.h"
 
 void
-get_metadata (GFile *file,
-              gchar *metadata[])
+extractor_get_metadata (GFile *file,
+                        gchar *metadata[])
 {
 	TagLib_File *taglib_file;
 	TagLib_Tag *taglib_tag;
