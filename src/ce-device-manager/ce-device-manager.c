@@ -22,8 +22,18 @@ static const gchar introspection_xml[] =
   "<node>"
   "  <interface name='org.freedesktop.TLite.CeDeviceManager'>"
   "    <signal name='CeDeviceAdded' />"
-  "    <signal name='CeDeviceScanned' />"
   "    <signal name='CeDeviceRemoved' />"
+  "    <signal name='DirScanStarted' />"
+  "    <signal name='DirScanFinished' />"
+  "    <signal name='FileScanStarted' />"
+  "    <signal name='FileScanProgress' />"
+  "    <signal name='FileScanFinished' />"
+  "    <signal name='IndexingStarted' />"
+  "    <signal name='IndexingProgress' />"
+  "    <signal name='IndexingFinished' />"
+  "    <signal name='StoreStarted' />"
+  "    <signal name='StoreProgress' />"
+  "    <signal name='StoreFinished' />"
   "  </interface>"
   "</node>";
 
@@ -55,11 +65,18 @@ enum {
 
 enum {
 	CE_DEVICE_ADDED,
-	CE_DEVICE_SCANNED,
 	CE_DEVICE_REMOVED,
+	DIR_SCAN_STARTED,
+	DIR_SCAN_FINISHED,
+	FILE_SCAN_STARTED,
+	FILE_SCAN_PROGRESS,
+	FILE_SCAN_FINISHED,
 	INDEXING_STARTED,
 	INDEXING_PROGRESS,
 	INDEXING_FINISHED,
+	STORE_STARTED,
+	STORE_PROGRESS,
+	STORE_FINISHED,
 	LAST_SIGNAL
 };
 
@@ -106,21 +123,61 @@ tlite_ce_device_manager_class_init (TLiteCeDeviceManagerClass *klass)
 		              G_TYPE_NONE, 1,
 		              G_TYPE_STRING);
 
-	signals [CE_DEVICE_SCANNED] =
-		g_signal_new ("ce-device-scanned",
-		              G_OBJECT_CLASS_TYPE (object_class),
-		              G_SIGNAL_RUN_LAST,
-		              G_STRUCT_OFFSET (TLiteCeDeviceManagerClass, ce_device_scanned),
-		              NULL, NULL,
-		              g_cclosure_marshal_VOID__STRING,
-		              G_TYPE_NONE, 1,
-		              G_TYPE_STRING);
-
 	signals [CE_DEVICE_REMOVED] =
 		g_signal_new ("ce-device-removed",
 		              G_OBJECT_CLASS_TYPE (object_class),
 		              G_SIGNAL_RUN_LAST,
 		              G_STRUCT_OFFSET (TLiteCeDeviceManagerClass, ce_device_removed),
+		              NULL, NULL,
+		              g_cclosure_marshal_VOID__STRING,
+		              G_TYPE_NONE, 1,
+		              G_TYPE_STRING);
+
+	signals [DIR_SCAN_STARTED] =
+		g_signal_new ("dir-scan-started",
+		              G_OBJECT_CLASS_TYPE (object_class),
+		              G_SIGNAL_RUN_LAST,
+		              G_STRUCT_OFFSET (TLiteCeDeviceManagerClass, dir_scan_started),
+		              NULL, NULL,
+		              g_cclosure_marshal_VOID__STRING,
+		              G_TYPE_NONE, 1,
+		              G_TYPE_STRING);
+
+	signals [DIR_SCAN_FINISHED] =
+		g_signal_new ("dir-scan-finished",
+		              G_OBJECT_CLASS_TYPE (object_class),
+		              G_SIGNAL_RUN_LAST,
+		              G_STRUCT_OFFSET (TLiteCeDeviceManagerClass, dir_scan_finished),
+		              NULL, NULL,
+		              g_cclosure_marshal_VOID__STRING,
+		              G_TYPE_NONE, 1,
+		              G_TYPE_STRING);
+
+	signals [FILE_SCAN_STARTED] =
+		g_signal_new ("file-scan-started",
+		              G_OBJECT_CLASS_TYPE (object_class),
+		              G_SIGNAL_RUN_LAST,
+		              G_STRUCT_OFFSET (TLiteCeDeviceManagerClass, file_scan_started),
+		              NULL, NULL,
+		              g_cclosure_marshal_VOID__STRING,
+		              G_TYPE_NONE, 1,
+		              G_TYPE_STRING);
+
+	signals [FILE_SCAN_PROGRESS] =
+		g_signal_new ("file-scan-progress",
+		              G_OBJECT_CLASS_TYPE (object_class),
+		              G_SIGNAL_RUN_LAST,
+		              G_STRUCT_OFFSET (TLiteCeDeviceManagerClass, file_scan_progress),
+		              NULL, NULL,
+		              g_cclosure_marshal_VOID__STRING,
+		              G_TYPE_NONE, 1,
+		              G_TYPE_STRING);
+
+	signals [FILE_SCAN_FINISHED] =
+		g_signal_new ("file-scan-finished",
+		              G_OBJECT_CLASS_TYPE (object_class),
+		              G_SIGNAL_RUN_LAST,
+		              G_STRUCT_OFFSET (TLiteCeDeviceManagerClass, file_scan_finished),
 		              NULL, NULL,
 		              g_cclosure_marshal_VOID__STRING,
 		              G_TYPE_NONE, 1,
@@ -151,6 +208,36 @@ tlite_ce_device_manager_class_init (TLiteCeDeviceManagerClass *klass)
 		              G_OBJECT_CLASS_TYPE (object_class),
 		              G_SIGNAL_RUN_LAST,
 		              G_STRUCT_OFFSET (TLiteCeDeviceManagerClass, indexing_finished),
+		              NULL, NULL,
+		              g_cclosure_marshal_VOID__STRING,
+		              G_TYPE_NONE, 1,
+		              G_TYPE_STRING);
+
+	signals [STORE_STARTED] =
+		g_signal_new ("store-started",
+		              G_OBJECT_CLASS_TYPE (object_class),
+		              G_SIGNAL_RUN_LAST,
+		              G_STRUCT_OFFSET (TLiteCeDeviceManagerClass, store_started),
+		              NULL, NULL,
+		              g_cclosure_marshal_VOID__STRING,
+		              G_TYPE_NONE, 1,
+		              G_TYPE_STRING);
+
+	signals [STORE_PROGRESS] =
+		g_signal_new ("store-progress",
+		              G_OBJECT_CLASS_TYPE (object_class),
+		              G_SIGNAL_RUN_LAST,
+		              G_STRUCT_OFFSET (TLiteCeDeviceManagerClass, store_progress),
+		              NULL, NULL,
+		              g_cclosure_marshal_VOID__STRING,
+		              G_TYPE_NONE, 1,
+		              G_TYPE_STRING);
+
+	signals [STORE_FINISHED] =
+		g_signal_new ("store-finished",
+		              G_OBJECT_CLASS_TYPE (object_class),
+		              G_SIGNAL_RUN_LAST,
+		              G_STRUCT_OFFSET (TLiteCeDeviceManagerClass, store_finished),
 		              NULL, NULL,
 		              g_cclosure_marshal_VOID__STRING,
 		              G_TYPE_NONE, 1,
@@ -222,12 +309,12 @@ ce_device_manager_crawler_finished_cb (TLiteCrawler *crawler,
 	TLiteCeDeviceManagerPrivate *priv = TLITE_CE_DEVICE_MANAGER_GET_PRIVATE (manager);
 	g_printf ("%s %d\n",__FUNCTION__, scanned_files);
 
-	g_signal_emit (manager, signals[CE_DEVICE_SCANNED], 0);
+	g_signal_emit (manager, signals[FILE_SCAN_FINISHED], 0);
 	g_dbus_connection_emit_signal (priv->dbus,
 			                       NULL,
 			                       TLITE_CE_DEVICE_MANAGER_DBUS_PATH_PREFIX,
 			                       TLITE_CE_DEVICE_MANAGER_DBUS_INTERFACE,
-			                       "CeDeviceScanned",
+			                       "FileScanFinished",
 			                       NULL,
 			                       NULL);
 

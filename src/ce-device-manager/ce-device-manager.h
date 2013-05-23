@@ -27,15 +27,29 @@ typedef struct {
 
 	void (* ce_device_added)   (TLiteCeDeviceManager *manager,
 	                            const gchar          *device_name);
-	void (* ce_device_scanned) (TLiteCeDeviceManager *manager,
-	                            const gchar          *device_name);
 	void (* ce_device_removed) (TLiteCeDeviceManager *manager,
+	                            const gchar          *device_name);
+	void (* dir_scan_started) (TLiteCeDeviceManager *manager,
+	                            const gchar          *device_name);
+	void (* dir_scan_finished) (TLiteCeDeviceManager *manager,
+	                            const gchar          *device_name);
+	void (* file_scan_started) (TLiteCeDeviceManager *manager,
+	                            const gchar          *device_name);
+	void (* file_scan_progress) (TLiteCeDeviceManager *manager,
+	                            const gchar          *device_name);
+	void (* file_scan_finished) (TLiteCeDeviceManager *manager,
 	                            const gchar          *device_name);
 	void (* indexing_started)  (TLiteCeDeviceManager *manager,
 	                            const gchar          *device_name);
 	void (* indexing_progress) (TLiteCeDeviceManager *manager,
 	                            const gchar          *device_name);
 	void (* indexing_finished) (TLiteCeDeviceManager *manager,
+	                            const gchar          *device_name);
+	void (* store_started)  (TLiteCeDeviceManager *manager,
+	                            const gchar          *device_name);
+	void (* store_progress) (TLiteCeDeviceManager *manager,
+	                            const gchar          *device_name);
+	void (* store_finished) (TLiteCeDeviceManager *manager,
 	                            const gchar          *device_name);
 } TLiteCeDeviceManagerClass;
 
