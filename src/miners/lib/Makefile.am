@@ -1,4 +1,4 @@
-## Process this file with automake to produce Makefile.in
+include $(top_srcdir)/Makefile.decl
 
 noinst_LTLIBRARIES = libtlite-miner.la
 libtlite_miner_la_CFLAGS = $(GIO_CFLAGS) \

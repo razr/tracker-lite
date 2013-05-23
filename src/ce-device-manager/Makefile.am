@@ -1,4 +1,4 @@
-## Process this file with automake to produce Makefile.in
+include $(top_srcdir)/Makefile.decl
 
 noinst_LTLIBRARIES = libtlite-ce-device-manager.la
 libtlite_ce_device_manager_la_CFLAGS = $(GLIB_CFLAGS) $(GIO_CFLAGS) \

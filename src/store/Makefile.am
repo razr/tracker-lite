@@ -1,4 +1,4 @@
-## Process this file with automake to produce Makefile.in
+include $(top_srcdir)/Makefile.decl
 
 noinst_LTLIBRARIES = libtlite-store.la
 libtlite_store_la_CFLAGS = $(GIO_CFLAGS) $(SQLITE3_CFLAGS) \

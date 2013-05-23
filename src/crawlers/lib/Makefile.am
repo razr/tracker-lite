@@ -1,4 +1,4 @@
-## Process this file with automake to produce Makefile.in
+include $(top_srcdir)/Makefile.decl
 
 noinst_LTLIBRARIES = libtlite-crawler.la
 libtlite_crawler_la_CFLAGS = $(GLIB_CFLAGS) \

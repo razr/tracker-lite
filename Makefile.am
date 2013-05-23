@@ -1,4 +1,4 @@
-## Process this file with automake to produce Makefile.in
+include $(top_srcdir)/Makefile.decl
 
 SUBDIRS = src
 
@@ -19,7 +19,7 @@ coverage:
 coverage-report: coverage
 	lcov --directory $(top_srcdir)/src --capture --output-file $(top_builddir)/lcov.info
 	lcov --directory $(top_srcdir)/src --output-file $(top_builddir)/lcov.info --remove $(top_builddir)/lcov.info \
-		server/tlite.c
+		extractors/tlite-metadata-info.c
 	rm -rf $(top_builddir)/coverage
 	$(mkdir_p) $(top_builddir)/coverage
 	genhtml --title "@PACKAGE_STRING@" --output-directory $(top_builddir)/coverage $(top_builddir)/lcov.info

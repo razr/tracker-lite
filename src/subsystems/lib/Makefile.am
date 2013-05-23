@@ -1,4 +1,4 @@
-## Process this file with automake to produce Makefile.in
+include $(top_srcdir)/Makefile.decl
 
 noinst_LTLIBRARIES = libtlite-subsystem.la
 libtlite_subsystem_la_CFLAGS = $(GLIB_CFLAGS) $(GIO_CFLAGS) $(GUDEV_CFLAGS) \
