@@ -61,6 +61,7 @@ tlite_metadata_info_unref (TLiteMetadataInfo *info)
 		for (i = 0; i < LAST_METADATA_FIELD; i++)
 			g_free (info->metadata[i]);
 
+		g_free (info->path);
 		g_slice_free (TLiteMetadataInfo, info);
 	}
 }

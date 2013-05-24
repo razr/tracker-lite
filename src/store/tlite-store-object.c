@@ -29,6 +29,9 @@
 
 #define TLITE_STORE_GET_PRIVATE(o) (G_TYPE_INSTANCE_GET_PRIVATE ((o), TLITE_TYPE_STORE, TLiteStorePrivate))
 
+//#define sqlite3_exec(db,str,a,b,c) g_printf ("%s\n", str)
+//#define sqlite3_exec(...)
+
 static GQuark store_error_quark = 0;
 
 struct _TLiteStorePrivate {
@@ -129,6 +132,8 @@ tlite_store_create_db (TLiteCeDevice *device)
 		g_critical ("Couldn't create database: '%s'", tlite_ce_device_get_name (device));
 		return FALSE;
 	}
+
+	sqlite3_exec (db, "PRAGMA synchronous = OFF", NULL, NULL, NULL);
 
 	/* folders */
 	sqlite3_exec (db,
@@ -267,7 +272,7 @@ store_get_metadata_info (GList *infos,
 		tlite_store_add_metadata (store->priv->device, info);
 	}
 	store->priv->stored_files += g_list_length (infos);
-	g_list_free (infos);
+	g_list_free_full (infos, tlite_metadata_info_unref);
 	sqlite3_exec (db, "COMMIT TRANSACTION;", NULL, NULL, NULL);
 
 	if (store->priv->stored_files == store->priv->minered_files) {
@@ -319,7 +324,7 @@ store_miner_minered_cb (TLiteMiner *miner,
 				        GList *infos,
                         TLiteStore *store)
 {
-	g_printf ("%s %d\n", __FUNCTION__, g_list_length (infos));
+	g_printf ("%s %d %d\n", __FUNCTION__, g_list_length (infos), store->priv->minered_files);
 	g_thread_pool_push (store->priv->thread_pool, infos, NULL);
 }
 

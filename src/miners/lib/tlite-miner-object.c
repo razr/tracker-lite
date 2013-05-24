@@ -178,8 +178,7 @@ miner_get_metadata (GList *files,
 	}
 
 	miner->priv->minered_files += g_list_length (files);
-	/* TODO: remove GList elements */
-	g_list_free (files);
+	g_list_free_full (files, g_object_unref);
 
 	/* TODO: calculate and send progress here */
 	g_signal_emit (miner, signals[MINERED], 0, infos);

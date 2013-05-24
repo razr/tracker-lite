@@ -36,6 +36,7 @@ struct TLiteCrawlerPrivate {
 };
 
 enum {
+	STARTED,
 	FOUND,
 	SCANNED,
 	FINISHED,
@@ -61,6 +62,14 @@ tlite_crawler_class_init (TLiteCrawlerClass *klass)
 
 	object_class->finalize = crawler_finalize;
 
+	signals[STARTED] =
+		g_signal_new ("started",
+		              G_TYPE_FROM_CLASS (klass),
+		              G_SIGNAL_RUN_LAST,
+		              G_STRUCT_OFFSET (TLiteCrawlerClass, started),
+		              NULL, NULL,
+		              g_cclosure_marshal_VOID__VOID,
+		              G_TYPE_NONE, 0);
 	signals[FOUND] =
 		g_signal_new ("found",
 		              G_TYPE_FROM_CLASS (klass),
@@ -183,15 +192,15 @@ crawler_process_func (gpointer data)
 {
 	TLiteCrawler      	*crawler;
 	TLiteCrawlerPrivate	*priv;
-	GFile *file;
+	GFile *dir;
 	GList	*scanned;
 
 	g_printf ("%s\n",__FUNCTION__);
 	crawler = TLITE_CRAWLER (data);
 	priv = TLITE_CRAWLER_GET_PRIVATE (crawler);
 
-	file = tlite_ce_device_get_file (priv->device);
-	scanned = crawler_scan_dir (crawler, file);
+	dir = tlite_ce_device_get_file (priv->device);
+	scanned = crawler_scan_dir (crawler, dir);
 
 	if (scanned != NULL) {
 		g_signal_emit (crawler, signals[SCANNED], 0, scanned);
@@ -219,6 +228,8 @@ tlite_crawler_start (TLiteCrawler *crawler,
 	if (priv->idle_id == 0) {
 		priv->idle_id = g_idle_add (crawler_process_func, crawler);
 	}
+
+	g_signal_emit (crawler, signals[STARTED], 0);
 
 	return TRUE;
 }
