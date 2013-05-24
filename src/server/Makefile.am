@@ -4,5 +4,5 @@ bin_PROGRAMS = tlite
 tlite_SOURCES = tlite.c
 tlite_CFLAGS = $(GIO_CFLAGS) $(GUDEV_CFLAGS) \
                         -I$(top_srcdir)/src/ce-device-manager
-tlite_LDADD = $(GIO_LIBS) $(GUDEV_LIBS) \
+tlite_LDADD = $(GIO_LIBS) $(GUDEV_LIBS) -lstdc++ \
                      $(top_srcdir)/src/ce-device-manager/libtlite-ce-device-manager.la

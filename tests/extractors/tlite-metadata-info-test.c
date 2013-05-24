@@ -20,7 +20,7 @@ test_extract_info_setters (void)
         g_assert_cmpstr (metadata[1], ==, "Dummy Album");
         g_assert_cmpstr (metadata[2], ==, "Dummy Artist");
         g_assert_cmpstr (metadata[3], ==, "Dummy Genre");
-//        g_assert_cmpstr (metadata[4], ==, "Dummy Composer");
+        g_assert_cmpstr (metadata[4], ==, "Dummy Composer");
 
         tlite_metadata_info_unref (info);
 

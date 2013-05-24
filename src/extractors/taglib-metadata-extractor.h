@@ -3,10 +3,15 @@
 
 #include <gio/gio.h>
 
-G_BEGIN_DECLS
+#ifdef __cplusplus 
+extern "C" { 
+#endif
 
 void extractor_get_metadata (GFile *file, gchar *metadata[]);
 
-G_END_DECLS
+#ifdef __cplusplus 
+}
+#endif
+
 
 #endif /* __TAGLIB_METADATA_EXTRACTOR_H__ */

@@ -8,7 +8,7 @@ libtlite_ce_device_manager_la_CFLAGS = $(GLIB_CFLAGS) $(GIO_CFLAGS) \
 					-I$(top_srcdir)/src/crawlers/lib \
 					-I$(top_srcdir)/src/miners/lib \
 					-I$(top_srcdir)/src/store
-libtlite_ce_device_manager_la_LIBADD = $(GLIB_LIBS) $(GIO_LIBS) \
+libtlite_ce_device_manager_la_LIBADD = $(GLIB_LIBS) $(GIO_LIBS) -lstdc++ \
                      $(top_srcdir)/src/ce-devices/libtlite-ce-device.la \
                      $(top_srcdir)/src/subsystems/lib/libtlite-subsystem.la \
                      $(top_srcdir)/src/crawlers/lib/libtlite-crawler.la \
